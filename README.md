@@ -10,7 +10,7 @@ The following repo keeps all the information related to the xCall deployment in 
 
 https://github.com/iconloop/btp2-testnet
 
-You can also create a local devevelopment environment by deploying local chains, connect them via xCall and tests your dApp contracts.
+You can also create a local development environment by deploying local chains, connect them via xCall and tests your dApp contracts.
 
 For setting up a development environment for xCall you can choose one of the following options.
 
