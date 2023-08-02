@@ -1,0 +1,7 @@
+.evm
+node_modules
+*.bkp
+*.swp
+build
+.idea
+bin

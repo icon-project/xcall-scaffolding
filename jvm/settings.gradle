@@ -1,0 +1,4 @@
+rootProject.name = 'java-score-starter-boilerplate'
+
+include(":VotingDapp")
+project(":VotingDapp").projectDir = file("contracts/VotingDapp")

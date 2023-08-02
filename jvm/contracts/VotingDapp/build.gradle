@@ -1,0 +1,30 @@
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    compileOnly("foundation.icon:javaee-api:0.9.5")
+    compileOnly("foundation.icon:btp2-xcall:0.6.2")
+    implementation("foundation.icon:javaee-scorex:0.5.4.1")
+
+    annotationProcessor("foundation.icon:javaee-score-client:0.10.3")
+    compileOnly("foundation.icon:javaee-score-client:0.10.3")
+
+    testImplementation("foundation.icon:javaee-unittest:0.12.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
+}
+
+optimizedJar {
+    mainClassName = 'app.VotingDapp'
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+test {
+    useJUnitPlatform()
+    testLogging.showStandardStreams = true
+}

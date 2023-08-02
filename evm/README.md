@@ -1,23 +1,33 @@
-# Wormhole Integration in EVM
+# EVM Integration
 
-These programs are enumerated the same as the other smart contract subdirectories (e.g. [solana](../solana)).
+The solidity source code for the contracts can be found in the `./contracts/` folder.
 
 ## Design Documents
 
 Read the design documents for each example project:
 
-1. [HelloWorld](../docs/01_hello_world.md)
-2. [HelloToken](../docs/02_hello_token.md)
-3. [NftBurnBridging](../docs/03_nft_burn_bridging.md)
+1. [Cross Chain Voting dApp](../docs/cross-chain-voting-dapp.md)
 
 ## Prerequisites
 
-Install [Foundry tools](https://book.getfoundry.sh/getting-started/installation), which include `forge`, `anvil` and `cast` CLI tools.
+Install NPM dependencies.
+
+```bash
+npm install
+```
 
 ## Build
 
-Simply run `make` to install the necessary dependencies and to build the smart contracts.
+Run the following command to compile the contracts.
 
-## Test Suite
+```bash
+npm run compile
+```
 
-Run the Solidity-based unit tests with `make unit-test` and the local-validator integration tests via `make integration-test`, or simply `make test` to run both of of them.
+## Test
+
+Run the following command to run the tests.
+
+```bash
+npm run test
+```

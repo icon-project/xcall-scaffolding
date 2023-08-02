@@ -1,37 +1,23 @@
-# Wormhole Scaffolding
+# xCall Scaffolding
 
-This repository warehouses apps that integrate with Wormhole generic messaging and existing apps that use Wormhole message passing. These apps range in complexity and demonstrate how to organize your business logic in your smart contracts. These examples also show how you would write tests supporting your Wormhole integration.
+This repository showcases examples of dApps that integrate with xCall, ICON's arbitrary cross-chain call service standard.
 
 ## Prerequisites
 
-### EVM
+xCall is currently deployed in several testnets networks for different chains so you can directly deploy your dApp contracts to these networks.
 
-If your xChain app will require EVM smart contracts, we recommend using [Foundry tools](https://book.getfoundry.sh/getting-started/installation), which include `forge`, `anvil` and `cast` CLI tools.
+The following repo keeps all the information related to the xCall deployment in these chains:
 
-### Solana
+https://github.com/iconloop/btp2-testnet
 
-If your xChain app will require Solana programs, prepare your development environment by installing [Solana and Anchor dependencies](https://book.anchor-lang.com/getting_started/installation.html), which include `solana` and `anchor` CLI tools.
+You can also create a local devevelopment environment by deploying local chains, connect them via xCall and tests your dApp contracts.
 
-### SUI
+For setting up a development environment for xCall you can choose one of the following options.
 
-Install the `Sui` CLI. This tool is used to compile the contracts and run the tests.
+* BTP2 e2edemo - [repo](https://github.com/icon-project/btp2/tree/main/e2edemo) / [Tutorial](https://docs.icon.community/build-with-xcall/quickstart/setting-up-a-local-environment)
 
-```sh
-cargo install --locked --git https://github.com/MystenLabs/sui.git --rev 09b2081498366df936abae26eea4b2d5cafb2788 sui sui-faucet
-```
-
-### Worm CLI
-
-First, checkout the [Wormhole](https://github.com/wormhole-foundation/wormhole) repo, then install the CLI tool by running:
-
-```sh
-wormhole/clients/js $ make install
-```
-
-`worm` is the swiss army knife for interacting with wormhole contracts on all
-supported chains, and generating signed messages (VAAs) for testing.
+*  DIVE - [repo](https://github.com/HugoByte/DIVE) / [Tutorial](https://www.xcall.dev/quickstart/setting-up-a-local-environment-with-dive-cli)
 
 ## Build and Test
 
-Each directory represents Wormhole integrations for specific blockchain networks. Please navigate
-to a network subdirectory to see more details on building and testing.
+Each directory represents xCall integrations for specific blockchain networks. Please navigate to a network subdirectory to see more details on building and testing.
