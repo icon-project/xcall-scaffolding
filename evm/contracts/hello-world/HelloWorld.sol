@@ -17,10 +17,20 @@ contract HelloWorld {
    */
   function initialize(
     address _xcallContractAddress,
-    string calldata _destinationBtpAddress) external {
+    string calldata _destinationBtpAddress) external payable {
     xcallContractAddress = _xcallContractAddress;
     destinationBtpAddress = _destinationBtpAddress;
   }
+
+  /**
+  */
+ function sendMessage(
+   bytes calldata _data,
+   bytes calldata _rollback
+ ) external payable {
+   XCall xcall = XCall(xcallContractAddress);
+   return xcall.sendCallMessage(destinationBtpAddress, _data, _rollback);
+ }
 
   /**
      @notice Compares two strings
@@ -50,7 +60,7 @@ contract HelloWorld {
   function handleCallMessage(
       string calldata _from,
       bytes calldata _data
-  ) external {
+  ) external payable {
     // Only the xCall contract can call this function
     if (msg.sender != xcallContractAddress) {
       revert("InvalidSender");
@@ -83,4 +93,12 @@ contract HelloWorld {
       string _from,
       string _msgData
   );
+}
+
+contract XCall {
+  function sendCallMessage(
+    string calldata _to,
+    bytes calldata _data,
+    bytes calldata _rollback
+  ) returns (unit256);
 }
