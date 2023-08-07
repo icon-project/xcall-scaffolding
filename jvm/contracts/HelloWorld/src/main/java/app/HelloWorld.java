@@ -7,19 +7,16 @@ import score.annotation.EventLog;
 import score.annotation.External;
 import score.annotation.Optional;
 import score.annotation.Payable;
-// import scorex.util.HashMap;
 
 import java.math.BigInteger;
-// import java.util.Map;
 
 public class HelloWorld {
     private final VarDB<String> destinationBtpAddress = Context.newVarDB("btpAddress", String.class);
     private final VarDB<Address> xcallContractAddress = Context.newVarDB("xcall", Address.class);
 
-    // private static final String ROLLBACK_YES = "voteYesRollback";
+    private static final String ROLLBACK = "ExecuteRollback";
 
-    public HelloWorld() {
-    }
+    private final VarDB<String> rollback = Context.newVarDB("rollback", String.class);
 
     @Payable
     @External
@@ -51,14 +48,23 @@ public class HelloWorld {
         Context.println("handleCallMessage payload:" + payload);
         // If the caller is the xcall contract, then update the local count
         if (caller.equals(xcallSourceAddress)) {
-            // Setup any required logic to handle the rollback here
+            Context.println("Message received");
+            // The following event is raised to notify that a message has been received
+           MessageReceived(_from, _data);
+           if (payload.equals(this.rollback.get())) {
+                // Setup any required logic to handle the rollback here
+               Context.println("Rollback message received");
+                // The following event is raised to notify that a rollback message has been received
+                RollbackDataReceived(_from, _data);
+           }
         } else {
             Context.revert("Unauthorized caller");
         }
 
-        // The following event is raised to notify that a rollback message has been received
-        RollbackDataReceived(_from, _data);
     }
+
+    @EventLog
+    public void MessageReceived(String _from, byte[] _rollback) {}
 
     @EventLog
     public void RollbackDataReceived(String _from, byte[] _rollback) {}
