@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../utils/ICallService.sol";
+
 /**
  * @title HelloWorld
  * @dev Implements the hellow world contract
@@ -27,9 +29,9 @@ contract HelloWorld {
  function sendMessage(
    bytes calldata _data,
    bytes calldata _rollback
- ) external payable {
-   XCall xcall = XCall(xcallContractAddress);
-   return xcall.sendCallMessage(destinationBtpAddress, _data, _rollback);
+ ) external payable returns (uint256) {
+   uint256 id = ICallService(xcallContractAddress).sendCallMessage(destinationBtpAddress, _data, _rollback);
+   return id;
  }
 
   /**
@@ -77,9 +79,12 @@ contract HelloWorld {
     // Emit the message received event
     emit MessageReceived(_from, msgData);
 
-    // If the message is "executeRollback" then revert the transaction
+    // If the message is "executeRollback" raise event to notify
+    // that a rollback was executed
     if (compareTo("executeRollback", msgData)) {
-      revert("InvalidMessage");
+      // // Emit the message received event
+      // emit RollbackDataReceived(_from, msgData);
+      revert("ExecuteRollback");
     }
   }
 
@@ -93,12 +98,15 @@ contract HelloWorld {
       string _from,
       string _msgData
   );
-}
 
-contract XCall {
-  function sendCallMessage(
-    string calldata _to,
-    bytes calldata _data,
-    bytes calldata _rollback
-  ) returns (unit256);
+  /**
+     @notice Handles the rollback message received from the source chain.
+     @dev Only called from the Call Message Service.
+     @param _from The BTP address of the caller on the source chain
+     @param _msgData The cross chain data sent
+   */
+  event RollbackDataReceived(
+      string _from,
+      string _msgData
+  );
 }
