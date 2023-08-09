@@ -18,6 +18,10 @@ public class HelloWorld {
 
     private final VarDB<String> rollback = Context.newVarDB("rollback", String.class);
 
+    public HelloWorld() {
+        this.rollback.set(ROLLBACK);
+    }
+
     @Payable
     @External
     public void initialize(Address _sourceXCallContract, String _destinationBtpAddress) {
@@ -64,7 +68,7 @@ public class HelloWorld {
     }
 
     @EventLog
-    public void MessageReceived(String _from, byte[] _rollback) {}
+    public void MessageReceived(String _from, byte[] _msgData) {}
 
     @EventLog
     public void RollbackDataReceived(String _from, byte[] _rollback) {}

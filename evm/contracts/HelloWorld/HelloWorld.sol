@@ -82,8 +82,8 @@ contract HelloWorld {
     // If the message is "executeRollback" raise event to notify
     // that a rollback was executed
     if (compareTo("executeRollback", msgData)) {
-      // // Emit the message received event
-      // emit RollbackDataReceived(_from, msgData);
+      // Emit the rollback event
+      emit RollbackDataReceived(_from, msgData);
       revert("ExecuteRollback");
     }
   }
