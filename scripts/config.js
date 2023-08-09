@@ -21,6 +21,18 @@ const config = {
         chain: "cx0000000000000000000000000000000000000000"
       },
       nid: 3
+    },
+    paths: {
+      evm: {
+        root: "../evm/contracts/",
+        build: "../evm/build/contracts/",
+        post: ""
+      },
+      jvm: {
+        root: "../jvm/contracts/",
+        build: "../jvm/contracts/",
+        post: "build/libs/"
+      }
     }
   }
 };

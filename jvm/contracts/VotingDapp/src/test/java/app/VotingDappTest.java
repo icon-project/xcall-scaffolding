@@ -18,7 +18,8 @@ public class VotingDappTest extends TestBase {
 
     @BeforeAll
     public static void setup() throws Exception {
-        DappScore = sm.deploy(owner, VotingDapp.class, owner.getAddress(), btpAddress);
+        DappScore = sm.deploy(owner, VotingDapp.class);
+        DappScore.invoke(owner, "initialize", owner.getAddress(), btpAddress);
     }
 
     @Test

@@ -28,9 +28,7 @@ public class VotingDapp {
     private final VarDB<String> rollbackNo = Context.newVarDB(ROLLBACK_NO, String.class);
     private final VarDB<String> payloadNo = Context.newVarDB(PAYLOAD_NO, String.class);
 
-    public VotingDapp(Address _sourceXCallContract, String _destinationBtpAddress) {
-        this.destinationBtpAddress.set(_destinationBtpAddress);
-        this.xcallContractAddress.set(_sourceXCallContract);
+    public VotingDapp() {
         this.countOfNo.set(BigInteger.ZERO);
         this.countOfYes.set(BigInteger.ZERO);
         this.payloadYes.set(PAYLOAD_YES);
@@ -43,6 +41,13 @@ public class VotingDapp {
         Address xcallSourceAddress = this.xcallContractAddress.get();
         String _to = this.destinationBtpAddress.get();
         return Context.call(BigInteger.class, Context.getValue(), xcallSourceAddress, "sendCallMessage", _to, _data, _rollback);
+    }
+
+    @Payable
+    @External
+    public void initialize(Address _sourceXCallContract, String _destinationBtpAddress) {
+        this.destinationBtpAddress.set(_destinationBtpAddress);
+        this.xcallContractAddress.set(_sourceXCallContract);
     }
 
     @Payable

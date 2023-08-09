@@ -17,15 +17,22 @@ contract VotingDapp {
 
   /**
      @notice Constructor
-     @param _callService The address of the contract that will only be allowed to call the handleCallMessage function
-     @param _votesCap The max amount of votes that can be casted
    */
-  constructor(address _callService, int _votesCap) {
+  constructor() {
     votes.countOfYes = 0;
     votes.countOfNo = 0;
+  }
+
+  /**
+  * @notice Initializes the contract.
+     @param _callService The address of the contract that will only be allowed to call the handleCallMessage function
+     @param _votesCap The max amount of votes that can be casted
+  */
+ function initialize(address _callService, int _votesCap) external payable {
     callSvc = _callService;
     votesCap = _votesCap;
   }
+
 
   /**
      @notice Returns the votes struct.

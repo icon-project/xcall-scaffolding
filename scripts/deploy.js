@@ -1,67 +1,38 @@
-const IconService = require("icon-sdk-js");
-const { Web3 } = require("web3");
 const {
-  EVM_RPC,
-  JVM_RPC,
-  EVM_PRIVATE_KEY,
-  JVM_PRIVATE_KEY,
-  EVM_XCALL_ADDRESS,
-  JVM_XCALL_ADDRESS,
-  config
-} = require("./config");
+  deployJvmContract,
+  deployEvmContract,
+  getContractPaths,
+  verifyContractsBuild,
+  getTxResult
+} = require("./utils");
 
-const {
-  IconBuilder,
-  IconConverter,
-  SignedTransaction,
-  HttpProvider,
-  IconWallet
-} = IconService.default;
-const { CallTransactionBuilder, CallBuilder } = IconBuilder;
-
-const HTTP_PROVIDER = new HttpProvider(JVM_RPC);
-const JVM_SERVICE = new IconService.default(HTTP_PROVIDER);
-const JVM_WALLET = IconWallet.loadPrivateKey(JVM_PRIVATE_KEY);
-
-const EVM_SERVICE = new Web3(EVM_RPC);
-const EVM_WALLET = EVM_SERVICE.eth.accounts.privateKeyToAccount(
-  EVM_PRIVATE_KEY,
-  true
-);
-EVM_SERVICE.eth.accounts.wallet.add(EVM_WALLET);
-
-/*
- * deployIconContract
- */
-async function deployIconContract(params) {
+async function main() {
   try {
-    const content = getIconContractBytecode();
-    const payload = new IconBuilder.DeployTransactionBuilder()
-      .contentType("application/java")
-      .content(`0x${content}`)
-      .params(params)
-      .from(JVM_WALLET.getAddress())
-      .to(config.icon.contract.chain)
-      .nid(config.icon.nid)
-      .version(3)
-      .timestamp(new Date().getTime() * 1000)
-      .stepLimit(IconConverter.toBigNumber(1000000000))
-      .build();
+    // verify contracts are built
+    await verifyContractsBuild();
 
-    const signedTx = new SignedTransaction(payload, JVM_WALLET);
-    return await JVM_SERVICE.sendTransaction(signedTx).execute();
+    // get contract paths
+    const contractPaths = getContractPaths();
+
+    // deploy JVM contracts
+    for (const contractPath of contractPaths.jvm) {
+      console.log("\n>Deploying JVM contract", contractPath);
+      const deployed = await deployJvmContract(contractPath);
+      console.log("Deployed JVM contract", deployed);
+      const txResult = await getTxResult(deployed);
+      console.log("Tx result", txResult);
+    }
+
+    // deploy EVM contracts
+    for (const contractPath of contractPaths.evm) {
+      console.log("\n>Deploying EVM contract", contractPath);
+      const deployed = await deployEvmContract(contractPath);
+      console.log("Deployed EVM contract", deployed);
+    }
   } catch (e) {
-    console.log("Error deploying contract", e);
-    throw new Error("Error deploying contract");
+    console.log("Error deploying contracts", e.message);
+    throw new Error("Error deploying contracts");
   }
 }
 
-/*
- */
-function getIconContractBytecode() {
-  //
-}
-
-module.exports = {
-  deployIconContract
-};
+main();

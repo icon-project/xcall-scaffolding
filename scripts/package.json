@@ -4,7 +4,7 @@
   "description": "",
   "main": "deploy.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "deploy": "node deploy.js"
   },
   "keywords": [],
   "author": "",
