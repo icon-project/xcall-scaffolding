@@ -32,7 +32,8 @@ const config = {
         root: "../jvm/contracts/",
         build: "../jvm/contracts/",
         post: "build/libs/"
-      }
+      },
+      deployments: "./deployments.json"
     }
   }
 };

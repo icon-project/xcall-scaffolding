@@ -135,25 +135,27 @@ function getEvmContract(compiledContractPath) {
 
 /*
  */
+function getDappsNames() {
+  const roots = Object.keys(config.paths).map(key => config.paths[key].root);
+  const folderNamesEvm = getDirectories(roots[0]);
+  const folderNamesEvmAndJvm = getDirectories(roots[1]).filter(folder =>
+    folderNamesEvm.includes(folder)
+  );
+  return folderNamesEvmAndJvm;
+}
+
+/*
+ */
 function getContractPaths() {
   try {
-    const roots = Object.keys(config.paths).map(key => config.paths[key].root);
-    const results = {
-      evm: [],
-      jvm: []
-    };
-    const folderNamesEvm = getDirectories(roots[0]);
-    const folderNamesEvmAndJvm = getDirectories(roots[1]).filter(folder =>
-      folderNamesEvm.includes(folder)
-    );
+    const results = {};
+    const folderNamesEvmAndJvm = getDappsNames();
 
     folderNamesEvmAndJvm.forEach(folder => {
-      results.evm.push(
-        `${config.paths.evm.build}${config.paths.evm.post}${folder}.json`
-      );
-      results.jvm.push(
-        `${config.paths.jvm.build}${folder}/${config.paths.jvm.post}${folder}-optimized.jar`
-      );
+      results[folder] = {
+        evm: `${config.paths.evm.build}${config.paths.evm.post}${folder}.json`,
+        jvm: `${config.paths.jvm.build}${folder}/${config.paths.jvm.post}${folder}-optimized.jar`
+      };
     });
     return results;
   } catch (e) {
@@ -176,16 +178,15 @@ function getDirectories(path) {
 function verifyContractsBuild() {
   const paths = getContractPaths();
   try {
-    paths.evm.forEach(path => {
-      if (!fs.existsSync(path)) {
-        throw new Error(`EVM contract build not found: ${path}`);
+    for (const dapp in paths) {
+      const path = paths[dapp];
+      if (!fs.existsSync(path.evm)) {
+        throw new Error(`EVM contract build not found: ${path.evm}`);
       }
-    });
-    paths.jvm.forEach(path => {
-      if (!fs.existsSync(path)) {
-        throw new Error(`JVM contract build not found: ${path}`);
+      if (!fs.existsSync(path.jvm)) {
+        throw new Error(`JVM contract build not found: ${path.jvm}`);
       }
-    });
+    }
     return true;
   } catch (e) {
     console.log("Error verifying contract build.", e.message);
@@ -240,8 +241,33 @@ function validateConfig() {
   }
 }
 
+/*
+ */
 async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/*
+ */
+function saveDeployments(deployments) {
+  try {
+    fs.writeFileSync(config.paths.deployments, JSON.stringify(deployments));
+  } catch (e) {
+    console.log("Error saving deployments", e.message);
+    throw new Error("Error saving deployments");
+  }
+}
+
+/*
+ */
+function getDeployments() {
+  try {
+    const deployments = fs.readFileSync(config.paths.deployments);
+    return JSON.parse(deployments);
+  } catch (e) {
+    console.log(">> Error getting deployments", e.message);
+    return null;
+  }
 }
 
 module.exports = {
@@ -249,5 +275,8 @@ module.exports = {
   deployEvmContract,
   getContractPaths,
   verifyContractsBuild,
-  getTxResult
+  getTxResult,
+  saveDeployments,
+  getDeployments,
+  getDappsNames
 };
