@@ -4,7 +4,8 @@
   "description": "",
   "main": "deploy.js",
   "scripts": {
-    "deploy": "node deploy.js"
+    "deploy": "node deploy.js",
+    "test-e2e": "node e2e/e2e-main.js"
   },
   "keywords": [],
   "author": "",

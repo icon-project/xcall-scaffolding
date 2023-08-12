@@ -5,7 +5,10 @@ const {
   EVM_PRIVATE_KEY,
   JVM_PRIVATE_KEY,
   EVM_XCALL_ADDRESS,
-  JVM_XCALL_ADDRESS
+  JVM_XCALL_ADDRESS,
+  JVM_NETWORK_LABEL,
+  EVM_NETWORK_LABEL,
+  JVM_NID
 } = process.env;
 
 const config = {
@@ -15,12 +18,14 @@ const config = {
   JVM_PRIVATE_KEY,
   EVM_XCALL_ADDRESS,
   JVM_XCALL_ADDRESS,
+  JVM_NETWORK_LABEL,
+  EVM_NETWORK_LABEL,
+  JVM_NID,
   config: {
     icon: {
       contract: {
         chain: "cx0000000000000000000000000000000000000000"
-      },
-      nid: 3
+      }
     },
     paths: {
       evm: {

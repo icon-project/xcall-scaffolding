@@ -6,8 +6,11 @@ const {
   JVM_RPC,
   EVM_PRIVATE_KEY,
   JVM_PRIVATE_KEY,
-  // EVM_XCALL_ADDRESS,
-  // JVM_XCALL_ADDRESS,
+  EVM_XCALL_ADDRESS,
+  JVM_XCALL_ADDRESS,
+  EVM_NETWORK_LABEL,
+  JVM_NETWORK_LABEL,
+  JVM_NID,
   config
 } = require("./config");
 
@@ -61,7 +64,7 @@ async function deployJvmContract(compiledContractPath) {
       // .params(params)
       .from(JVM_WALLET.getAddress())
       .to(config.icon.contract.chain)
-      .nid(config.icon.nid)
+      .nid(JVM_NID)
       .version(3)
       .timestamp(new Date().getTime() * 1000)
       .stepLimit(IconConverter.toBigNumber(10000000000))
@@ -228,6 +231,64 @@ function validateConfig() {
       console.log("> JVM_RPC validated");
     }
 
+    // verify xCall address on EVM Chain
+    if (
+      EVM_XCALL_ADDRESS == null ||
+      EVM_XCALL_ADDRESS == "" ||
+      isValidEVMContract(EVM_XCALL_ADDRESS) == false
+    ) {
+      console.error(
+        `> Invalid EVM_XCALL_ADDRESS: ${EVM_XCALL_ADDRESS}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+      );
+    } else {
+      console.log("> EVM_XCALL_ADDRESS validated");
+    }
+
+    // verify xCall address on JVM Chain
+    if (
+      JVM_XCALL_ADDRESS == null ||
+      JVM_XCALL_ADDRESS == "" ||
+      isValidJVMContract(JVM_XCALL_ADDRESS) == false
+    ) {
+      console.error(
+        `> Invalid JVM_XCALL_ADDRESS: ${JVM_XCALL_ADDRESS}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+      );
+    } else {
+      console.log("> JVM_XCALL_ADDRESS validated");
+    }
+
+    // verify JVM network label
+    if (
+      JVM_NETWORK_LABEL == null ||
+      JVM_NETWORK_LABEL == "" ||
+      isValidBTPNetworkLabel(JVM_NETWORK_LABEL) == false
+    ) {
+      console.error(
+        `> Invalid JVM_NETWORK_LABEL: ${JVM_NETWORK_LABEL}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+      );
+    } else {
+      console.log("> JVM_NETWORK_LABEL validated");
+    }
+
+    // verify EVM network label
+    if (
+      EVM_NETWORK_LABEL == null ||
+      EVM_NETWORK_LABEL == "" ||
+      isValidBTPNetworkLabel(EVM_NETWORK_LABEL) == false
+    ) {
+      console.error(
+        `> Invalid EVM_NETWORK_LABEL: ${EVM_NETWORK_LABEL}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+      );
+    } else {
+      console.log("> EVM_NETWORK_LABEL validated");
+    }
+
+    // verify JVM nid
+    if (JVM_NID == null || JVM_NID == "") {
+      throw new Error("JVM_NID not set");
+    } else {
+      console.log("> JVM_NID validated");
+    }
     // verify contracts are built
     // const contractsAreBuilt = verifyContractsBuild();
     // if (!contractsAreBuilt) {
@@ -268,6 +329,28 @@ function getDeployments() {
     console.log(">> Error getting deployments", e.message);
     return null;
   }
+}
+
+function isValidJVMContract(address) {
+  return isValidHexAddress(address, "c");
+}
+
+function isValidEVMContract(address) {
+  return isValidHexAddress(address, "0");
+}
+
+function isValidHexAddress(address, stringStartsWith) {
+  return (
+    address &&
+    address.length === 42 &&
+    address.startsWith(stringStartsWith.toLowerCase())
+  );
+}
+
+function isValidBTPNetworkLabel(label) {
+  const [nid, chain] = label.split(".");
+  console.log(nid, chain);
+  return nid != null && chain != null && nid !== "" && chain !== "";
 }
 
 module.exports = {
