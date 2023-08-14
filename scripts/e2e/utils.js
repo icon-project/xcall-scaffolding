@@ -9,6 +9,10 @@ const {
   EVM_NETWORK_LABEL,
   JVM_NID
 } = require("../config");
+const { isValidHexAddress } = require("../utils");
+
+const { Web3 } = require("web3");
+const web3Utils = Web3.utils;
 
 const IconService = require("icon-sdk-js");
 const {
@@ -84,7 +88,17 @@ async function initializeJvmContract(dappContract, params) {
 function getBtpAddress(label, address) {
   return `btp://${label}/${address}`;
 }
+
+function decodeMessage(msg) {
+  return web3Utils.hexToString(msg);
+}
+
+function encodeMessage(msg) {
+  return web3Utils.fromUtf8(msg);
+}
+
 module.exports = {
   initializeJvmContract,
-  getBtpAddress
+  getBtpAddress,
+  isValidHexAddress
 };

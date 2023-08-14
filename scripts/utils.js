@@ -45,7 +45,7 @@ async function getTxResult(txHash) {
     try {
       return await JVM_SERVICE.getTransactionResult(txHash).execute();
     } catch (e) {
-      console.log(`txResult (pass ${loop}): ${e.message}`);
+      // console.log(`txResult (pass ${loop}): ${e.message}`);
       loop++;
       await sleep(1000);
     }
@@ -201,6 +201,7 @@ function verifyContractsBuild() {
  */
 function validateConfig() {
   try {
+    console.log(">>>>>> Validating configurations");
     // verify private key for EVM chain
     if (
       EVM_PRIVATE_KEY == null ||
@@ -339,17 +340,16 @@ function isValidEVMContract(address) {
   return isValidHexAddress(address, "0");
 }
 
-function isValidHexAddress(address, stringStartsWith) {
+function isValidHexAddress(address, stringStartsWith, length = 42) {
   return (
     address &&
-    address.length === 42 &&
+    address.length === length &&
     address.startsWith(stringStartsWith.toLowerCase())
   );
 }
 
 function isValidBTPNetworkLabel(label) {
   const [nid, chain] = label.split(".");
-  console.log(nid, chain);
   return nid != null && chain != null && nid !== "" && chain !== "";
 }
 
@@ -361,5 +361,6 @@ module.exports = {
   getTxResult,
   saveDeployments,
   getDeployments,
-  getDappsNames
+  getDappsNames,
+  isValidHexAddress
 };
