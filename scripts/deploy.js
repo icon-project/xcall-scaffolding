@@ -5,7 +5,8 @@ const {
   verifyContractsBuild,
   getTxResult,
   getDeployments,
-  saveDeployments
+  saveDeployments,
+  getEvmContract
   // getDappsNames
 } = require("./utils");
 
@@ -53,9 +54,11 @@ async function main() {
       result[dapp].jvm = txResult["scoreAddress"];
 
       console.log("> Deploying EVM contract", contractPaths[dapp].evm);
+      const { abi } = getEvmContract(contractPaths[dapp].evm);
       const deployedEvm = await deployEvmContract(contractPaths[dapp].evm);
       console.log("> Deployed EVM contract address: ", deployedEvm);
       result[dapp].evm = deployedEvm;
+      result[dapp].evmAbi = abi;
     }
 
     console.log("> Deployments", result);

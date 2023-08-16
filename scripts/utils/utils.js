@@ -13,6 +13,7 @@ const {
   JVM_NID,
   config
 } = require("./config");
+const customRequest = require("./customRequest");
 
 const {
   IconBuilder,
@@ -35,6 +36,22 @@ const EVM_WALLET = EVM_SERVICE.eth.accounts.privateKeyToAccount(
   true
 );
 EVM_SERVICE.eth.accounts.wallet.add(EVM_WALLET);
+
+/*
+ */
+async function fetchEventsFromTracker() {
+  try {
+    const response = await customRequest(
+      `${config.tracker.logs}${JVM_XCALL_ADDRESS}`,
+      false,
+      config.tracker.hostname
+    );
+    return response;
+  } catch (e) {
+    console.log("Error fetching events from tracker", e.message);
+    throw new Error("Error fetching events from tracker");
+  }
+}
 
 /*
  */
@@ -362,5 +379,8 @@ module.exports = {
   saveDeployments,
   getDeployments,
   getDappsNames,
-  isValidHexAddress
+  isValidHexAddress,
+  sleep,
+  getEvmContract,
+  customRequest
 };

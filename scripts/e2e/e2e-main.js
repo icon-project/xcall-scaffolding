@@ -1,4 +1,5 @@
-const { getDeployments } = require("../utils");
+const { utils } = require("../utils");
+const { getDeployments } = utils;
 const { helloWorldE2E } = require("./e2e-helloWorld");
 
 async function main() {

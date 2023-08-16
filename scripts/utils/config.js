@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { xcallAbi } = require("./xcallAbi");
 const {
   EVM_RPC,
   JVM_RPC,
@@ -39,7 +40,12 @@ const config = {
         post: "build/libs/"
       },
       deployments: "./deployments.json"
+    },
+    tracker: {
+      logs: "/api/v1/logs?address=",
+      hostname: "tracker.berlin.icon.community"
     }
-  }
+  },
+  xcallAbi: xcallAbi
 };
 module.exports = config;
