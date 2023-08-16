@@ -1,4 +1,14 @@
-# xCall Scaffolding - Contract deployment.
+# xCall Scaffolding - Contract deployment and E2E testing.
+
+## Installation
+
+Before running the deployment and e2e testing scripts you need to first install the required packages in the project by running the following command:
+
+```bash
+npm install
+```
+
+## Deployment and E2E testing
 
 To deploy the contracts for each example dApp you have to create an environment file (`.env` file) inside the `/scripts/` folder at the root of the project.
 
