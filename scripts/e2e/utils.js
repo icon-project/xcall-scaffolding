@@ -170,10 +170,12 @@ async function sendSignedTxEvm(contract, method, ...params) {
 
 async function getBlockJvm(label) {
   try {
+    console.log("block label");
+    console.log(label);
     const hashStart = "0x";
     if (label == null || label === "latest") {
       return await JVM_SERVICE.getLastBlock().execute();
-    } else if (label.startsWith(hashStart)) {
+    } else if (typeof label === "string" && label.startsWith(hashStart)) {
       return await JVM_SERVICE.getBlockByHash(label).execute();
     } else {
       return await JVM_SERVICE.getBlockByHeight(label).execute();
@@ -186,17 +188,19 @@ async function getBlockJvm(label) {
 
 async function filterEventFromBlockJvm(block, sig, address) {
   try {
-    const block = await getBlockJvm(block);
     const filtered = [];
     for (const tx of block.confirmedTransactionList) {
       const txResult = await JVM_SERVICE.getTransactionResult(
         tx.txHash
       ).execute();
+      console.log("eventlogs");
+      console.log(txResult.eventLogs);
       const events = filterEventJvm(txResult.eventLogs, sig, address);
       if (events.length > 0) {
         filtered.concat(events);
       }
     }
+    return filtered;
   } catch (e) {
     console.log("Error filtering event on JVM Chain: ", e.message);
     throw new Error("Error filtering event on JVM Chain");
@@ -209,6 +213,10 @@ async function waitEventJvm(
   fromBlock = null,
   maxMinutesToWait = 20
 ) {
+  console.log("wait event jvm");
+  console.log(sig);
+  console.log(address);
+
   const maxSecondsToWait = maxMinutesToWait * 60;
   let secondsWaited = 0;
   let latest = await getBlockJvm("latest");
@@ -219,7 +227,7 @@ async function waitEventJvm(
   let block = await getBlockJvm(height);
   while (secondsWaited < maxSecondsToWait) {
     while (height < latest.height) {
-      console.log(`-- Waiting for event on EVM Chain: block height ${height}`);
+      console.log(`-- Waiting for event on JVM Chain: block height ${height}`);
       const events = await filterEventFromBlockJvm(block, sig, address);
       if (events.length > 0) {
         return { block, events };
@@ -235,6 +243,16 @@ async function waitEventJvm(
     latest = await getBlockJvm("latest");
   }
   throw new Error("Timeout waiting for event on JVM Chain");
+}
+
+async function waitResponseMessageEventJvm() {
+  try {
+    const sig = "ResponseMessage(int,int,str)";
+    return await waitEventJvm(sig, JVM_XCALL_ADDRESS);
+  } catch (e) {
+    console.log("Error waiting for ResponseMessage event: ", e.message);
+    throw new Error("Error waiting for ResponseMessage event");
+  }
 }
 
 async function getXcallJvmFee(network, useRollback = true) {
@@ -320,13 +338,17 @@ function filterCallMessageSentEventJvm(eventlogs) {
 }
 
 function filterEventJvm(eventlogs, sig, address = JVM_XCALL_ADDRESS) {
-  return eventlogs.filter(event => {
+  const result = eventlogs.filter(event => {
     return (
       event.indexed &&
       event.indexed[0] === sig &&
       (!address || address === event.scoreAddress)
     );
   });
+
+  console.log("filter result");
+  console.log(result);
+  return result;
 }
 
 function parseCallMessageSentEventJvm(event) {
@@ -355,5 +377,6 @@ module.exports = {
   executeCallEvm,
   filterCallExecutedEventEvm,
   waitCallExecutedEventEvm,
-  waitEventJvm
+  waitEventJvm,
+  waitResponseMessageEventJvm
 };

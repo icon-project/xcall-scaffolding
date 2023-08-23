@@ -241,12 +241,12 @@ function validateConfig() {
     if (EVM_RPC == null) {
       throw new Error("EVM_RPC not set");
     } else {
-      console.log("> EVM_RPC validated");
+      console.log(`> EVM_RPC validated. ${EVM_RPC}`);
     }
     if (JVM_RPC == null) {
       throw new Error("JVM_RPC not set");
     } else {
-      console.log("> JVM_RPC validated");
+      console.log(`> JVM_RPC validated. ${JVM_RPC}`);
     }
 
     // verify xCall address on EVM Chain

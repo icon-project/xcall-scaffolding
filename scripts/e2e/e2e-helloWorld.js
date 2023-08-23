@@ -13,7 +13,7 @@ const {
   executeCallEvm,
   filterCallExecutedEventEvm,
   waitCallExecutedEventEvm,
-  waitEventJvm
+  waitResponseMessageEventJvm
 } = require("./utils");
 const {
   JVM_XCALL_ADDRESS,
@@ -150,7 +150,9 @@ async function helloWorldE2E(deployments) {
 
   // If rollbackData is not null, invoke rollback on EVM chain and test result
   if (rollbackData != null) {
-    //
+    const responseMessageEvent = await waitResponseMessageEventJvm();
+    console.log("response message event");
+    console.log(responseMessageEvent);
   }
 }
 
