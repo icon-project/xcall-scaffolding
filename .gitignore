@@ -50,11 +50,13 @@ scripts/venv
 
 ### Misc
 .env
-.env.local
+.env.*
+!.env.example
 node_modules
 contract/scripts
 *.swp*
 *foo*
 deployments.json
+deployments.*
 *.bkp
 local
