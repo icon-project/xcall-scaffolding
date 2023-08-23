@@ -50,8 +50,7 @@ scripts/venv
 
 ### Misc
 .env
-*.env
-*.env*
+.env.local
 node_modules
 contract/scripts
 *.swp*
