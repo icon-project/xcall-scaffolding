@@ -28,14 +28,31 @@ JVM_NID="Network id for jvm chain"
 The following is an example of how the `.env` file should look like when working with Berlin and Sepolia networks:
 
 ```env
+# url of the evm chain rpc node
 EVM_RPC="https://sepolia.infura.io/v3/ffbf8ebe228f4758ae82e175640275e0"
+
+# url of the jvm chain rpc node
 JVM_RPC="https://berlin.net.solidwallet.io/api/v3/icon_dex"
-EVM_PRIVATE_KEY="0xabc01..234"
-JVM_PRIVATE_KEY="abc01..234"
+
+# private key of the evm chain wallet
+EVM_PRIVATE_KEY="0x1d0.....79b"
+
+# private key of the jvm chain wallet
+JVM_PRIVATE_KEY="0a0.....e03"
+
+# address of the xcall contract on the evm chain
 EVM_XCALL_ADDRESS="0x694C1f5Fb4b81e730428490a1cE3dE6e32428637"
+
+# address of the xcall contract on the jvm chain
 JVM_XCALL_ADDRESS="cxf4958b242a264fc11d7d8d95f79035e35b21c1bb"
+
+# BTP network ID of the jvm chain
 JVM_NETWORK_LABEL="0x7.icon"
+
+# BTP network ID of the evm chain
 EVM_NETWORK_LABEL="0xaa36a7.eth2"
+
+# network if of the jvm chain
 JVM_NID=7
 ```
 
