@@ -16,9 +16,10 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.3.1",
-    "icon-sdk-js": "^1.5.1",
     "ethers": "5.7.2",
-    "web3": "^4.0.3"
+    "icon-sdk-js": "^1.5.1",
+    "web3": "^4.0.3",
+    "ws": "^8.13.0"
   },
   "devDependencies": {
     "eslint": "^8.46.0"

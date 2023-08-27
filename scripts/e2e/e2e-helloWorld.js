@@ -14,16 +14,22 @@ const {
   filterCallExecutedEventEvm,
   waitCallExecutedEventEvm,
   waitResponseMessageEventJvm
+  // waitRollbackExecutedEventJvm
 } = require("./utils");
+const { Monitor } = require("../utils/monitor");
 const {
   JVM_XCALL_ADDRESS,
   EVM_XCALL_ADDRESS,
   EVM_NETWORK_LABEL,
   JVM_NETWORK_LABEL
 } = config;
-const { getTxResult, isValidHexAddress } = utils;
+const { getTxResult, isValidHexAddress, JVM_SERVICE, sleep } = utils;
 
 async function helloWorldE2E(deployments) {
+  // start monitor
+  const monitor = new Monitor(JVM_SERVICE, JVM_XCALL_ADDRESS);
+  monitor.start();
+
   // get BTP addresses
   const evmDappBtpAddress = getBtpAddress(
     EVM_NETWORK_LABEL,
@@ -46,6 +52,8 @@ async function helloWorldE2E(deployments) {
     }`
   );
   const txResult1 = await getTxResult(request1);
+  const initBlock = txResult1.blockHeight;
+
   console.log(
     `> Test: validate tx for invoking 'initialize' method on JVM contract: ${
       txResult1.status == 1 ? "SUCCESS" : "FAILURE"
@@ -148,12 +156,27 @@ async function helloWorldE2E(deployments) {
     }`
   );
 
-  // If rollbackData is not null, invoke rollback on EVM chain and test result
+  // If rollbackData fetch Response Message event.
+  // if revert was raised on EVM chain, fetch rollbackMessage event from JVM contract
   if (rollbackData != null) {
-    const responseMessageEvent = await waitResponseMessageEventJvm();
-    console.log("response message event");
-    console.log(responseMessageEvent);
+    let currentBlockHeight = initBlock;
+    const maxBlockHeight = initBlock + 1800;
+    while (currentBlockHeight < maxBlockHeight) {
+      console.log("current block height: " + currentBlockHeight);
+      currentBlockHeight = monitor.getCurrentBlockHeight();
+      const events = monitor.getEvents();
+
+      if (events.ResponseMessage.length > 0) {
+        console.log("response message event");
+        console.log(events.ResponseMessage);
+        console.log(JSON.stringify(events.ResponseMessage));
+        break;
+      }
+
+      await sleep(2000);
+    }
   }
+  monitor.close();
 }
 
 module.exports = {
