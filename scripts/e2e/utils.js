@@ -104,7 +104,7 @@ async function waitCallExecutedEventEvm(eventFilter, maxMinutesToWait = 20) {
 }
 
 async function waitEventEvm(contract, eventFilter, maxMinutesToWait = 20) {
-  let height = await contract.provider.getBlockNumber();
+  let height = (await contract.provider.getBlockNumber()) - 5;
   let next = height + 1;
   const maxSecondsToWait = maxMinutesToWait * 60;
   let secondsWaited = 0;

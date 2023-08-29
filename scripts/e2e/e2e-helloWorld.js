@@ -26,10 +26,6 @@ const {
 const { getTxResult, isValidHexAddress, JVM_SERVICE, sleep } = utils;
 
 async function helloWorldE2E(deployments) {
-  // start monitor
-  const monitor = new Monitor(JVM_SERVICE, JVM_XCALL_ADDRESS);
-  monitor.start();
-
   // get BTP addresses
   const evmDappBtpAddress = getBtpAddress(
     EVM_NETWORK_LABEL,
@@ -53,6 +49,9 @@ async function helloWorldE2E(deployments) {
   );
   const txResult1 = await getTxResult(request1);
   const initBlock = txResult1.blockHeight;
+  // start monitor
+  const monitor = new Monitor(JVM_SERVICE, JVM_XCALL_ADDRESS, initBlock);
+  monitor.start();
 
   console.log(
     `> Test: validate tx for invoking 'initialize' method on JVM contract: ${
@@ -161,20 +160,34 @@ async function helloWorldE2E(deployments) {
   if (rollbackData != null) {
     let currentBlockHeight = initBlock;
     const maxBlockHeight = initBlock + 1800;
+    let responseMessageEventWasRaised = false;
     while (currentBlockHeight < maxBlockHeight) {
-      console.log("current block height: " + currentBlockHeight);
+      console.log(
+        "-- Waiting for event on JVM chain: block height: " + currentBlockHeight
+      );
       currentBlockHeight = monitor.getCurrentBlockHeight();
       const events = monitor.getEvents();
 
       if (events.ResponseMessage.length > 0) {
-        console.log("response message event");
-        console.log(events.ResponseMessage);
-        console.log(JSON.stringify(events.ResponseMessage));
+        for (const event of events.ResponseMessage) {
+          if (event.indexed[1] === parsedEventlog1._sn) {
+            responseMessageEventWasRaised = true;
+            break;
+          }
+        }
+      }
+
+      if (responseMessageEventWasRaised) {
         break;
       }
 
       await sleep(2000);
     }
+    console.log(
+      `> Test: filtering 'ResponseMessage' event on JVM contract: ${
+        responseMessageEventWasRaised != null ? "SUCCESS" : "FAILURE"
+      }`
+    );
   }
   monitor.close();
 }
