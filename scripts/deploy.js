@@ -1,3 +1,4 @@
+const { utils } = require("./utils");
 const {
   deployJvmContract,
   deployEvmContract,
@@ -8,13 +9,13 @@ const {
   saveDeployments,
   getEvmContract
   // getDappsNames
-} = require("./utils");
+} = utils;
 
 async function main() {
   try {
     // check if contracts have already been deployed
     console.log("\n> Checking if contracts have already been deployed");
-    const localDeployments = await getDeployments();
+    const localDeployments = getDeployments();
 
     if (localDeployments !== null) {
       console.log(
@@ -64,7 +65,7 @@ async function main() {
     console.log("> Deployments", result);
     saveDeployments(result);
   } catch (e) {
-    console.log("Error deploying contracts", e.message);
+    console.log("Error deploying contracts:", e.message);
     throw new Error("Error deploying contracts");
   }
 }

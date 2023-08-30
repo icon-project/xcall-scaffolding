@@ -5,15 +5,15 @@ const {
   getBtpAddress,
   invokeJvmDAppMethod,
   // decodeMessage,
-  encodeMessage,
+  // encodeMessage,
   filterCallMessageSentEventJvm,
   parseCallMessageSentEventJvm,
   filterCallMessageEventEvm,
   waitCallMessageEventEvm,
   executeCallEvm,
   filterCallExecutedEventEvm,
-  waitCallExecutedEventEvm,
-  waitResponseMessageEventJvm
+  waitCallExecutedEventEvm
+  // waitResponseMessageEventJvm
   // waitRollbackExecutedEventJvm
 } = require("./utils");
 const { Monitor } = require("../utils/monitor");
@@ -25,20 +25,20 @@ const {
 } = config;
 const { getTxResult, isValidHexAddress, JVM_SERVICE, sleep } = utils;
 
-async function helloWorldE2E(deployments) {
+async function votingDappE2E(deployments) {
   // get BTP addresses
   const evmDappBtpAddress = getBtpAddress(
     EVM_NETWORK_LABEL,
-    deployments.HelloWorld.evm
+    deployments.VotingDapp.evm
   );
 
   const jvmDappBtpAddress = getBtpAddress(
     JVM_NETWORK_LABEL,
-    deployments.HelloWorld.jvm
+    deployments.VotingDapp.jvm
   );
 
   // initialize JVM contract and test results
-  const request1 = await initializeJvmContract(deployments.HelloWorld.jvm, {
+  const request1 = await initializeJvmContract(deployments.VotingDapp.jvm, {
     _sourceXCallContract: JVM_XCALL_ADDRESS,
     _destinationBtpAddress: evmDappBtpAddress
   });
@@ -61,10 +61,10 @@ async function helloWorldE2E(deployments) {
 
   // initialize EVM contract and test results
   const request2 = await initializeEvmContract(
-    deployments.HelloWorld.evm,
-    deployments.HelloWorld.evmAbi,
+    deployments.VotingDapp.evm,
+    deployments.VotingDapp.evmAbi,
     EVM_XCALL_ADDRESS,
-    jvmDappBtpAddress
+    20
   );
   console.log(
     `> Test: invoking 'initialize' method on EVM contract: ${
@@ -75,29 +75,28 @@ async function helloWorldE2E(deployments) {
   );
 
   // send a message to EVM dApp and test results
-  const msg = encodeMessage("Hello World!");
-  const rollbackData = encodeMessage("Hello World! Rollback");
-  // const rollbackData = null;
-  const requestParams = {
-    payload: msg
-  };
-  if (rollbackData != null) {
-    requestParams.rollback = rollbackData;
-  }
+  // const msg = encodeMessage("Hello World!");
+  // const rollbackData = encodeMessage("Hello World! Rollback");
+  const rollbackData = null;
+  // const requestParams = {
+  //   payload: msg
+  // };
+  // if (rollbackData != null) {
+  //   requestParams.rollback = rollbackData;
+  // }
 
   const request3 = await invokeJvmDAppMethod(
-    deployments.HelloWorld.jvm,
-    "sendMessage",
-    requestParams
+    deployments.VotingDapp.jvm,
+    "voteYes"
   );
   console.log(
-    `> Test: invoking 'sendMessage' method on JVM contract: ${
+    `> Test: invoking 'voteYes' method on JVM contract: ${
       isValidHexAddress(request3, "0x", 66) == true ? "SUCCESS" : "FAILURE"
     }`
   );
   const txResult2 = await getTxResult(request3);
   console.log(
-    `> Test: validate tx for invoking 'sendMessage' method on JVM contract: ${
+    `> Test: validate tx for invoking 'voteYes' method on JVM contract: ${
       txResult2.status == 1 ? "SUCCESS" : "FAILURE"
     }`
   );
@@ -114,7 +113,7 @@ async function helloWorldE2E(deployments) {
   // catch CallMessage event from EVM dApp and test result
   const eventlog2 = filterCallMessageEventEvm(
     jvmDappBtpAddress,
-    deployments.HelloWorld.evm,
+    deployments.VotingDapp.evm,
     parsedEventlog1._sn
   );
   console.log(
@@ -193,5 +192,5 @@ async function helloWorldE2E(deployments) {
 }
 
 module.exports = {
-  helloWorldE2E
+  votingDappE2E
 };

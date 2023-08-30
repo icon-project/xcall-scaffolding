@@ -23,6 +23,8 @@ const {
   IconWallet
 } = IconService.default;
 
+const { EventMonitorSpec, EventFilter, BigNumber } = IconService;
+
 // validate config
 validateConfig();
 
@@ -30,12 +32,35 @@ const HTTP_PROVIDER = new HttpProvider(JVM_RPC);
 const JVM_SERVICE = new IconService.default(HTTP_PROVIDER);
 const JVM_WALLET = IconWallet.loadPrivateKey(JVM_PRIVATE_KEY);
 
-const EVM_SERVICE = new Web3(EVM_RPC);
-const EVM_WALLET = EVM_SERVICE.eth.accounts.privateKeyToAccount(
+const EVM_SERVICE_WEB3 = new Web3(EVM_RPC);
+const EVM_WALLET_WEB3 = EVM_SERVICE_WEB3.eth.accounts.privateKeyToAccount(
   EVM_PRIVATE_KEY,
   true
 );
-EVM_SERVICE.eth.accounts.wallet.add(EVM_WALLET);
+EVM_SERVICE_WEB3.eth.accounts.wallet.add(EVM_WALLET_WEB3);
+
+/*
+ *
+ */
+function contractEventMonitor(height, sig, contract) {
+  // const heightAsBigNumber = BigNumber.isBigNumber(height)
+  //   ? height
+  //   : BigNumber(height);
+  // const eventFilter = new EventFilter(sig, contract);
+  // const spec = new EventMonitorSpec(heightAsBigNumber, eventFilter, true, 20);
+  // const onData = event => {
+  //   console.log("Event", event);
+  // };
+  // const onError = error => {
+  //   console.log("Error", error);
+  // };
+  // const onProgress = data => {
+  //   console.log("Progress", data);
+  // };
+  // const url = "ws://" + JVM_RPC.replace("http://", "").replace("https://", "");
+  // console.log("url", url);
+  // return new Monitor(url, spec, onData, onError, onProgress);
+}
 
 /*
  */
@@ -50,6 +75,25 @@ async function fetchEventsFromTracker() {
   } catch (e) {
     console.log("Error fetching events from tracker", e.message);
     throw new Error("Error fetching events from tracker");
+  }
+}
+
+/*
+ *
+ */
+async function getBlockJvm(label) {
+  try {
+    const hashStart = "0x";
+    if (label == null || label === "latest") {
+      return await JVM_SERVICE.getLastBlock().execute();
+    } else if (typeof label === "string" && label.startsWith(hashStart)) {
+      return await JVM_SERVICE.getBlockByHash(label).execute();
+    } else {
+      return await JVM_SERVICE.getBlockByHeight(label).execute();
+    }
+  } catch (e) {
+    console.log("Error getting block on JVM Chain: ", e.message);
+    throw new Error("Error getting block on JVM Chain");
   }
 }
 
@@ -115,13 +159,13 @@ function getJvmContractBytecode(contractPath) {
 async function deployEvmContract(compiledContractPath) {
   try {
     const { abi, bytecode } = getEvmContract(compiledContractPath);
-    const contract = new EVM_SERVICE.eth.Contract(abi);
+    const contract = new EVM_SERVICE_WEB3.eth.Contract(abi);
     const deployTx = contract.deploy({
       data: bytecode
     });
     const deployedContract = await deployTx
       .send({
-        from: EVM_WALLET.address,
+        from: EVM_WALLET_WEB3.address,
         gas: await deployTx.estimateGas()
       })
       .once("transactionHash", hash => {
@@ -216,7 +260,10 @@ function verifyContractsBuild() {
 
 /*
  */
-function validateConfig() {
+function validateConfig(bypass = false) {
+  if (bypass) {
+    return true;
+  }
   try {
     console.log(">>>>>> Validating configurations");
     // verify private key for EVM chain
@@ -241,12 +288,12 @@ function validateConfig() {
     if (EVM_RPC == null) {
       throw new Error("EVM_RPC not set");
     } else {
-      console.log("> EVM_RPC validated");
+      console.log(`> EVM_RPC validated. ${EVM_RPC}`);
     }
     if (JVM_RPC == null) {
       throw new Error("JVM_RPC not set");
     } else {
-      console.log("> JVM_RPC validated");
+      console.log(`> JVM_RPC validated. ${JVM_RPC}`);
     }
 
     // verify xCall address on EVM Chain
@@ -382,5 +429,15 @@ module.exports = {
   isValidHexAddress,
   sleep,
   getEvmContract,
-  customRequest
+  customRequest,
+  fetchEventsFromTracker,
+  contractEventMonitor,
+  getBlockJvm,
+  JVM_SERVICE,
+  JVM_WALLET,
+  EVM_SERVICE_WEB3,
+  EVM_WALLET_WEB3,
+  IconBuilder,
+  IconConverter,
+  SignedTransaction
 };

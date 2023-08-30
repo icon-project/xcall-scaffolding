@@ -1,4 +1,13 @@
-require("dotenv").config();
+// setting up environment variables
+let ENV_PATH = `./.env`;
+let DEPLOYMENTS_PATH = `./deployments.json`;
+
+if (process.env.NODE_ENV != null) {
+  ENV_PATH = `./.env.${process.env.NODE_ENV}`;
+  DEPLOYMENTS_PATH = `./deployments.${process.env.NODE_ENV}.json`;
+}
+
+require("dotenv").config({ path: ENV_PATH });
 const { xcallAbi } = require("./xcallAbi");
 const {
   EVM_RPC,
@@ -39,7 +48,7 @@ const config = {
         build: "../jvm/contracts/",
         post: "build/libs/"
       },
-      deployments: "./deployments.json"
+      deployments: DEPLOYMENTS_PATH
     },
     tracker: {
       logs: "/api/v1/logs?address=",
