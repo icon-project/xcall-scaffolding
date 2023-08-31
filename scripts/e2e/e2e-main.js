@@ -7,9 +7,9 @@ async function main() {
   const deployments = await getDeployments();
 
   console.log("\n>>>>>> Running E2E tests");
-  console.log(">>>> Running helloWorldE2E");
-  // await helloWorldE2E(deployments);
-  console.log(">>>> Running helloWorldE2E");
+  console.log("\n>>>> Running helloWorldE2E");
+  await helloWorldE2E(deployments);
+  console.log("\n>>>> Running votingDappE2E");
   await votingDappE2E(deployments);
 }
 
