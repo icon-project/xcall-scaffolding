@@ -21,9 +21,23 @@ const {
   JVM_XCALL_ADDRESS,
   EVM_XCALL_ADDRESS,
   EVM_NETWORK_LABEL,
-  JVM_NETWORK_LABEL
+  JVM_NETWORK_LABEL,
+  JVM_RPC,
+  JVM_PRIVATE_KEY,
+  JVM_NID
 } = config;
-const { getTxResult, isValidHexAddress, JVM_SERVICE, sleep } = utils;
+const { getTxResult, isValidHexAddress, sleep } = utils;
+const IconService = require("icon-sdk-js");
+const {
+  IconBuilder,
+  IconConverter,
+  SignedTransaction,
+  HttpProvider,
+  IconWallet
+} = IconService.default;
+const HTTP_PROVIDER = new HttpProvider(JVM_RPC);
+const JVM_SERVICE = new IconService.default(HTTP_PROVIDER);
+const JVM_WALLET = IconWallet.loadPrivateKey(JVM_PRIVATE_KEY);
 
 async function helloWorldE2E(deployments) {
   // get BTP addresses
@@ -38,10 +52,19 @@ async function helloWorldE2E(deployments) {
   );
 
   // initialize JVM contract and test results
-  const request1 = await initializeJvmContract(deployments.HelloWorld.jvm, {
-    _sourceXCallContract: JVM_XCALL_ADDRESS,
-    _destinationBtpAddress: evmDappBtpAddress
-  });
+  const request1 = await initializeJvmContract(
+    deployments.HelloWorld.jvm,
+    {
+      _sourceXCallContract: JVM_XCALL_ADDRESS,
+      _destinationBtpAddress: evmDappBtpAddress
+    },
+    EVM_NETWORK_LABEL,
+    true,
+    JVM_XCALL_ADDRESS,
+    JVM_SERVICE,
+    JVM_WALLET,
+    JVM_NID
+  );
   console.log(
     `> Test: invoking 'initialize' method on JVM contract: ${
       isValidHexAddress(request1, "0x", 66) == true ? "SUCCESS" : "FAILURE"
@@ -96,6 +119,7 @@ async function helloWorldE2E(deployments) {
     }`
   );
   const txResult2 = await getTxResult(request3);
+  console.log(txResult2);
   console.log(
     `> Test: validate tx for invoking 'sendMessage' method on JVM contract: ${
       txResult2.status == 1 ? "SUCCESS" : "FAILURE"

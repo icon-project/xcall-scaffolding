@@ -9,7 +9,9 @@
     "deploy-testnet": "NODE_ENV=testnet node deploy.js",
     "test-e2e": "node e2e/e2e-main.js",
     "test-e2e-local": "NODE_ENV=local node e2e/e2e-main.js",
-    "test-e2e-testnet": "NODE_ENV=testnet node e2e/e2e-main.js"
+    "test-e2e-testnet": "NODE_ENV=testnet node e2e/e2e-main.js",
+    "test-e2e-testnet-helloWorld": "NODE_ENV=testnet SINGLE_TEST=helloWorldE2E node e2e/e2e-main.js",
+    "test-e2e-testnet-votingDapp": "NODE_ENV=testnet SINGLE_TEST=votingDappE2E node e2e/e2e-main.js"
   },
   "keywords": [],
   "author": "",

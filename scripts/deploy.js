@@ -38,9 +38,11 @@ async function main() {
 
     for (const dapp in contractPaths) {
       result[dapp] = {};
+      const dappPath = contractPaths[dapp].jvm;
+      console.log("dappPath", dappPath);
       console.log(`\n> Deploying contracts for dApp -> ${dapp}`);
-      console.log("> Deploying JVM contract", contractPaths[dapp].jvm);
-      const deployedJvm = await deployJvmContract(contractPaths[dapp].jvm);
+      console.log("> Deploying JVM contract", dappPath);
+      const deployedJvm = await deployJvmContract(dappPath);
       console.log("> JVM contract deployment tx hash: ", deployedJvm);
       const txResult = await getTxResult(deployedJvm);
       console.log(

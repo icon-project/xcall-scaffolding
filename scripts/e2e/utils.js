@@ -339,37 +339,46 @@ async function waitRollbackExecutedEventJvm(id) {
   }
 }
 
-async function getXcallJvmFee(network, useRollback = true) {
+async function getXcallJvmFee(
+  network,
+  useRollback = true,
+  contract = JVM_XCALL_ADDRESS,
+  service = JVM_SERVICE
+) {
   try {
     const params = {
       _net: network,
       _rollback: useRollback ? "0x1" : "0x0"
     };
     const txObj = new CallBuilder()
-      .to(JVM_XCALL_ADDRESS)
+      .to(contract)
       .method("getFee")
       .params(params)
       .build();
 
-    return await JVM_SERVICE.call(txObj).execute();
+    return await service.call(txObj).execute();
   } catch (e) {
     console.log("Error getting xcall fee on JVM Chain: ", e.message);
     throw new Error("Error getting xcall fee on JVM Chain");
   }
 }
 
+// invokeJvmContractMethod(method, dappContract, params, fee);
 async function invokeJvmContractMethod(
   method,
   contract,
+  wallet = JVM_WALLET,
+  nid = JVM_NID,
+  service = JVM_SERVICE,
   params = null,
   value = null
 ) {
   try {
     const txObj = new CallTransactionBuilder()
-      .from(JVM_WALLET.getAddress())
+      .from(wallet.getAddress())
       .to(contract)
       .stepLimit(IconConverter.toBigNumber(20000000))
-      .nid(IconConverter.toBigNumber(JVM_NID))
+      .nid(IconConverter.toBigNumber(nid))
       .nonce(IconConverter.toBigNumber(1))
       .version(IconConverter.toBigNumber(3))
       .timestamp(new Date().getTime() * 1000)
@@ -383,27 +392,75 @@ async function invokeJvmContractMethod(
     }
 
     const formattedTxObj = txObj.build();
-    const signedTx = new SignedTransaction(formattedTxObj, JVM_WALLET);
-    return await JVM_SERVICE.sendTransaction(signedTx).execute();
+    const signedTx = new SignedTransaction(formattedTxObj, wallet);
+    return await service.sendTransaction(signedTx).execute();
   } catch (e) {
     console.log("Error invoking JVM contract method: ", e);
     throw new Error("Error invoking JVM contract method");
   }
 }
 
-async function initializeJvmContract(dappContract, params) {
-  const fee = await getXcallJvmFee(EVM_NETWORK_LABEL);
-  return await invokeJvmContractMethod("initialize", dappContract, params, fee);
+async function initializeJvmContract(
+  dappContract,
+  params,
+  destinationNetworkLabel = EVM_NETWORK_LABEL,
+  rollback = true,
+  contract = JVM_XCALL_ADDRESS,
+  service = JVM_SERVICE,
+  wallet = JVM_WALLET,
+  nid = JVM_NID
+) {
+  const fee = await getXcallJvmFee(
+    destinationNetworkLabel,
+    rollback,
+    contract,
+    service
+  );
+  return await invokeJvmContractMethod(
+    "initialize",
+    dappContract,
+    wallet,
+    nid,
+    service,
+    params,
+    fee
+  );
 }
 
+// dappContract,
+// params,
+// destinationNetworkLabel = EVM_NETWORK_LABEL,
+// rollback = true,
+// contract = JVM_XCALL_ADDRESS,
+// service = JVM_SERVICE,
+// wallet = JVM_WALLET,
+// nid = JVM_NID
 async function invokeJvmDAppMethod(
   dappContract,
   method,
   params,
-  rollback = true
+  rollback = true,
+  destinationNetworkLabel = EVM_NETWORK_LABEL,
+  jvmXCallContract = JVM_XCALL_ADDRESS,
+  service = JVM_SERVICE,
+  wallet = JVM_WALLET,
+  nid = JVM_NID
 ) {
-  const fee = await getXcallJvmFee(EVM_NETWORK_LABEL, rollback);
-  return await invokeJvmContractMethod(method, dappContract, params, fee);
+  const fee = await getXcallJvmFee(
+    destinationNetworkLabel,
+    rollback,
+    jvmXCallContract,
+    service
+  );
+  return await invokeJvmContractMethod(
+    method,
+    dappContract,
+    wallet,
+    nid,
+    service,
+    params,
+    fee
+  );
 }
 function getBtpAddress(label, address) {
   return `btp://${label}/${address}`;

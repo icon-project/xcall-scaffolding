@@ -134,7 +134,8 @@ async function deployJvmContract(compiledContractPath) {
     const signedTx = new SignedTransaction(payload, JVM_WALLET);
     return await JVM_SERVICE.sendTransaction(signedTx).execute();
   } catch (e) {
-    console.log(`Error deploying contract: ${compiledContractPath}`, e.message);
+    console.log(`Error deploying contract: ${compiledContractPath}`);
+    console.log(e);
     throw new Error("Error deploying contract on JVM chain");
   }
 }
