@@ -7,21 +7,17 @@ contract("HelloWorld", accounts => {
 
   // test #1 - recieves message
   it("should initialize and be able to receive message", async () => {
-    const destinationBtpAddress = "btp://network/account";
+    const destinationAddress = "network/account";
     const payload = "0x12345";
 
     const dapp = await HelloWorld.deployed();
-    await dapp.initialize(xcallContractAddress, destinationBtpAddress, {
+    await dapp.initialize(xcallContractAddress, destinationAddress, {
       from: deployer
     });
 
-    const receipt = await dapp.handleCallMessage(
-      destinationBtpAddress,
-      payload,
-      {
-        from: xcallContractAddress
-      }
-    );
+    const receipt = await dapp.handleCallMessage(destinationAddress, payload, {
+      from: xcallContractAddress
+    });
 
     assert(receipt.logs[0].event === "MessageReceived", "Event not emitted");
   });
