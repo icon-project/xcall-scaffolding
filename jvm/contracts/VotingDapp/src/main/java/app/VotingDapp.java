@@ -15,7 +15,7 @@ import java.util.Map;
 public class VotingDapp {
     private final VarDB<BigInteger> countOfYes = Context.newVarDB("yes", BigInteger.class);
     private final VarDB<BigInteger> countOfNo = Context.newVarDB("no", BigInteger.class);
-    private final VarDB<String> destinationBtpAddress = Context.newVarDB("btpAddress", String.class);
+    private final VarDB<String> destinationAddress = Context.newVarDB("btpAddress", String.class);
     private final VarDB<Address> xcallContractAddress = Context.newVarDB("xcall", Address.class);
 
     private static final String ROLLBACK_YES = "voteYesRollback";
@@ -39,14 +39,14 @@ public class VotingDapp {
 
     private BigInteger _sendCallMessage(byte[] _data, @Optional byte[] _rollback) {
         Address xcallSourceAddress = this.xcallContractAddress.get();
-        String _to = this.destinationBtpAddress.get();
+        String _to = this.destinationAddress.get();
         return Context.call(BigInteger.class, Context.getValue(), xcallSourceAddress, "sendCallMessage", _to, _data, _rollback);
     }
 
     @Payable
     @External
-    public void initialize(Address _sourceXCallContract, String _destinationBtpAddress) {
-        this.destinationBtpAddress.set(_destinationBtpAddress);
+    public void initialize(Address _sourceXCallContract, String _destinationAddress) {
+        this.destinationAddress.set(_destinationAddress);
         this.xcallContractAddress.set(_sourceXCallContract);
     }
 
@@ -89,8 +89,8 @@ public class VotingDapp {
     }
 
     @External(readonly = true)
-    public String getDestinationBtpAddress() {
-        return this.destinationBtpAddress.get();
+    public String getDestinationAddress() {
+        return this.destinationAddress.get();
     }
 
     @External(readonly = true)
