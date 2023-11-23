@@ -2,6 +2,7 @@
   "name": "scripts",
   "version": "1.0.0",
   "description": "",
+  "type": "commonjs",
   "main": "deploy.js",
   "scripts": {
     "deploy": "node deploy.js",
@@ -9,8 +10,8 @@
     "deploy-testnet": "NODE_ENV=testnet node deploy.js",
     "test-e2e": "node e2e/e2e-main.js",
     "test-e2e-local": "NODE_ENV=local node e2e/e2e-main.js",
-    "test-e2e-testnet": "NODE_ENV=testnet node e2e/e2e-main.js",
-    "test-e2e-testnet-helloWorld": "NODE_ENV=testnet SINGLE_TEST=helloWorldE2E node e2e/e2e-main.js",
+    "test-e2e-testnet": "NODE_ENV=testnet node e2e/e2e-main.mjs",
+    "test-e2e-testnet-helloWorld": "NODE_ENV=testnet SINGLE_TEST=helloWorldE2E node e2e/e2e-main.mjs",
     "test-e2e-testnet-votingDapp": "NODE_ENV=testnet SINGLE_TEST=votingDappE2E node e2e/e2e-main.js"
   },
   "keywords": [],
@@ -20,10 +21,12 @@
     "dotenv": "^16.3.1",
     "ethers": "5.7.2",
     "icon-sdk-js": "^1.5.1",
+    "ora": "^7.0.1",
     "web3": "^4.0.3",
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "eslint": "^8.46.0"
+    "eslint": "^8.46.0",
+    "ts-node": "^10.9.1"
   }
 }

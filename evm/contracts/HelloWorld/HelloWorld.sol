@@ -2,7 +2,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../utils/ICallService.sol";
+
+interface ICallService {
+  function sendCallMessage(
+    string memory _to,
+    bytes memory _data,
+    bytes memory _rollback
+    // string[] memory sources,
+    // string[] memory destinations
+  ) external payable returns (uint256);
+}
 
 /**
  * @title HelloWorld

@@ -52,7 +52,8 @@ const config = {
     },
     tracker: {
       logs: "/api/v1/logs?address=",
-      hostname: "tracker.berlin.icon.community"
+      berlin: "tracker.berlin.icon.community",
+      lisbon: "tracker.lisbon.icon.community"
     }
   },
   xcallAbi: xcallAbi

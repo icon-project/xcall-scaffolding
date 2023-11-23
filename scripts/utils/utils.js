@@ -64,12 +64,24 @@ function contractEventMonitor(height, sig, contract) {
 
 /*
  */
-async function fetchEventsFromTracker() {
+async function fetchEventsFromTracker(network = "berlin") {
   try {
+    let url = null;
+    switch (network) {
+      case "berlin":
+        url = config.tracker.berlin;
+        break;
+      case "lisbon":
+        url = config.tracker.lisbon;
+        break;
+      default:
+        url = config.tracker.berlin;
+    }
+
     const response = await customRequest(
       `${config.tracker.logs}${JVM_XCALL_ADDRESS}`,
       false,
-      config.tracker.hostname
+      url
     );
     return response;
   } catch (e) {
@@ -275,7 +287,7 @@ function validateConfig(bypass = false) {
     ) {
       throw new Error("EVM_PRIVATE_KEY not set");
     } else {
-      console.log("> EVM_PRIVATE_KEY validated");
+      console.log(`> EVM_PRIVATE_KEY validated`);
     }
 
     // verify private key for JVM chain

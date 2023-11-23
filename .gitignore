@@ -60,3 +60,4 @@ deployments.json
 deployments.*
 *.bkp
 local
+*.old*
