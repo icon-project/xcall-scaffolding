@@ -84,28 +84,50 @@ function filterCallExecutedEventEvm(msgId) {
   return filterEventEvm(xCallContract, "CallExecuted", msgId);
 }
 
-async function waitCallMessageEventEvm(eventFilter, maxMinutesToWait = 20) {
+async function waitCallMessageEventEvm(
+  eventFilter,
+  spinner,
+  maxMinutesToWait = 20
+) {
   try {
     const xCallContract = getXcallContractObject();
-    return await waitEventEvm(xCallContract, eventFilter, maxMinutesToWait);
+    return await waitEventEvm(
+      xCallContract,
+      eventFilter,
+      spinner,
+      maxMinutesToWait
+    );
   } catch (e) {
     console.log("Error waiting for CallMessage event: ", e);
     throw new Error("Error waiting for CallMessage event");
   }
 }
 
-async function waitCallExecutedEventEvm(eventFilter, maxMinutesToWait = 20) {
+async function waitCallExecutedEventEvm(
+  eventFilter,
+  spinner,
+  maxMinutesToWait = 20
+) {
   try {
     const xCallContract = getXcallContractObject();
-    return await waitEventEvm(xCallContract, eventFilter, maxMinutesToWait);
+    return await waitEventEvm(
+      xCallContract,
+      eventFilter,
+      spinner,
+      maxMinutesToWait
+    );
   } catch (e) {
     console.log("Error waiting for CallExecuted event: ", e);
     throw new Error("Error waiting for CallExecuted event");
   }
 }
 
-async function waitEventEvm(contract, eventFilter, maxMinutesToWait = 20) {
-  console.log(eventFilter);
+async function waitEventEvm(
+  contract,
+  eventFilter,
+  spinner = null,
+  maxMinutesToWait = 20
+) {
   let height = (await contract.provider.getBlockNumber()) - 5;
   let next = height + 1;
   const maxSecondsToWait = maxMinutesToWait * 60;
@@ -119,19 +141,20 @@ async function waitEventEvm(contract, eventFilter, maxMinutesToWait = 20) {
         continue;
       }
       for (; height < next; height++) {
-        console.log(
-          `-- Waiting for event on EVM Chain: block height ${height}`
-        );
+        if (spinner != null) {
+          spinner.suffixText = `\n   -- Waiting for event on EVM Chain: block height ${height}`;
+        }
         const events = await contract.queryFilter(eventFilter, height);
-        if (events.length > 0) {
+        if (events != null && events.length > 0) {
           return events;
         }
       }
     } catch (err) {
-      console.log("Error waiting for event on EVM Chain: ", err);
+      spinner.suffixText = `\n   -- Error waiting for event on EVM Chain: ${err.message}`;
     }
   }
-  throw new Error("Timeout waiting for event on EVM Chain");
+  return null;
+  // throw new Error("Timeout waiting for event on EVM Chain");
 }
 
 async function executeCallEvm(id, data) {
@@ -159,8 +182,11 @@ async function initializeEvmContract(
       destinationBtpAddress
     );
   } catch (e) {
-    console.log("Error invoking initialize on EVM Chain: ", e);
-    throw new Error("Error invoking initialize on EVM Chain");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
@@ -172,12 +198,17 @@ async function sendSignedTxEvm(contract, method, ...params) {
       // gasLimit: 15000000
     };
     const tx = await contract[method](...params, txParams);
-    console.log(tx);
-    const txHash = await tx.wait(1);
-    return txHash;
+    const txWaited = await tx.wait(1);
+    return {
+      txHash: tx.hash,
+      txObj: txWaited
+    };
   } catch (e) {
-    console.log("Error sending signed tx on EVM Chain: ", e);
-    throw new Error("Error sending signed tx on EVM Chain");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
@@ -369,8 +400,11 @@ async function getXcallJvmFee(
 
     return await service.call(txObj).execute();
   } catch (e) {
-    console.log("Error getting xcall fee on JVM Chain: ", e.message);
-    throw new Error("Error getting xcall fee on JVM Chain");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
@@ -403,13 +437,20 @@ async function invokeJvmContractMethod(
     }
 
     const formattedTxObj = txObj.build();
-    console.log("txObject");
-    console.log(formattedTxObj);
+    // console.log("txObject");
+    // console.log(formattedTxObj);
     const signedTx = new SignedTransaction(formattedTxObj, wallet);
-    return await service.sendTransaction(signedTx).execute();
+    const result = await service.sendTransaction(signedTx).execute();
+    return {
+      txHash: result,
+      txObj: formattedTxObj
+    };
   } catch (e) {
-    console.log("Error invoking JVM contract method: ", e);
-    throw new Error("Error invoking JVM contract method");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
@@ -423,21 +464,32 @@ async function initializeJvmContract(
   wallet = JVM_WALLET,
   nid = JVM_NID
 ) {
-  const fee = await getXcallJvmFee(
-    destinationNetworkLabel,
-    rollback,
-    contract,
-    service
-  );
-  return await invokeJvmContractMethod(
-    "initialize",
-    dappContract,
-    wallet,
-    nid,
-    service,
-    params,
-    fee
-  );
+  try {
+    const fee = await getXcallJvmFee(
+      destinationNetworkLabel,
+      rollback,
+      contract,
+      service
+    );
+    if (typeof fee !== "string" && fee.error) {
+      throw new Error(fee.error);
+    }
+    return await invokeJvmContractMethod(
+      "initialize",
+      dappContract,
+      wallet,
+      nid,
+      service,
+      params,
+      fee
+    );
+  } catch (err) {
+    return {
+      txHash: null,
+      txObj: null,
+      error: err
+    };
+  }
 }
 
 async function invokeJvmDAppMethod(
@@ -451,21 +503,32 @@ async function invokeJvmDAppMethod(
   wallet = JVM_WALLET,
   nid = JVM_NID
 ) {
-  const fee = await getXcallJvmFee(
-    destinationNetworkLabel,
-    rollback,
-    jvmXCallContract,
-    service
-  );
-  return await invokeJvmContractMethod(
-    method,
-    dappContract,
-    wallet,
-    nid,
-    service,
-    params,
-    fee
-  );
+  try {
+    const fee = await getXcallJvmFee(
+      destinationNetworkLabel,
+      rollback,
+      jvmXCallContract,
+      service
+    );
+    if (typeof fee !== "string" && fee.error) {
+      throw new Error(fee.error);
+    }
+    return await invokeJvmContractMethod(
+      method,
+      dappContract,
+      wallet,
+      nid,
+      service,
+      params,
+      fee
+    );
+  } catch (err) {
+    return {
+      txHash: null,
+      txObj: null,
+      error: err
+    };
+  }
 }
 function getNetworkAddress(label, address) {
   return `${label}/${address}`;
@@ -506,6 +569,14 @@ function parseCallMessageSentEventJvm(event) {
   };
 }
 
+function parseEvmEventsFromBlock(block, eventName = "CallExecuted") {
+  // const logs = block.events.filter(event => {
+  //   return event.event === eventName;
+  // });
+  // return logs;
+  // return JSON.stringify(block);
+}
+
 export default {
   initializeJvmContract,
   initializeEvmContract,
@@ -525,5 +596,6 @@ export default {
   waitResponseMessageEventJvm,
   waitEventFromTrackerJvm,
   waitRollbackExecutedEventJvm,
-  getBlockJvm
+  getBlockJvm,
+  parseEvmEventsFromBlock
 };
