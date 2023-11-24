@@ -11,7 +11,7 @@ async function main() {
     const deployments = await getDeployments();
     if (deployments == null) {
       console.log(
-        "> No deployments found. Run deploy command before running tests. Exiting."
+        "> No deployments found. Run deploy command before running the demos. Exiting."
       );
       return;
     }
