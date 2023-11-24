@@ -368,21 +368,40 @@ async function helloWorldDemo(deployments) {
     // if revert was raised on EVM chain, fetch rollbackMessage event from JVM contract
     if (rollbackData != null) {
       console.log("> sn: ", parsedEventlog1._sn);
+      const spinner12 = ora({
+        text: `> Test: Wait for 'ResponseMessage' event to be raised on JVM contract: `,
+        suffixText: `${chalk.yellow("Pending")}.`,
+        prefixText: `${chalk.black.bgCyan(
+          "[due to block finality on sepolia this event might take up to 20 minutes to be raised]"
+        )}`,
+        spinner: process.argv[2]
+      }).start();
+
       // TODO from here
-      throw new Error("stop");
-      monitor.spinnerStart();
-      await monitor.waitForEvents("ResponseMessage", parsedEventlog1._sn);
-      const responseMsgEvents = monitor.events.ResponseMessage;
-      console.log(
-        `> Test: filtering 'ResponseMessage' event on JVM contract: ${
-          responseMsgEvents != null ? "SUCCESS" : "FAILURE"
-        }`
+      // throw new Error("stop");
+      // monitor.spinnerStart();
+      await monitor.waitForEvents(
+        "ResponseMessage",
+        parsedEventlog1._sn,
+        spinner12
       );
+      const responseMsgEvents = monitor.events.ResponseMessage;
+      if (responseMsgEvents == null) {
+        spinner12.suffixText = chalk.red("FAILURE") + ".\n";
+        spinner12.fail();
+        monitor.close();
+        return;
+      }
+      spinner12.suffixText =
+        chalk.green("SUCCESS") +
+        ".\n" +
+        chalk.dim(`   -- Event: ${JSON.stringify(responseMsgEvents)}\n`);
+      spinner12.succeed();
     }
     // stop monitor
     monitor.close();
   } catch (err) {
-    console.log(err);
+    console.log("Error in helloWorldDemo: ", err);
     monitor.close();
   }
 }

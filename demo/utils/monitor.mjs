@@ -48,14 +48,16 @@ class Monitor {
   }
 
   spinnerSuccess(text = "Waiting for events..") {
-    this.loopSpinner.text = `> ${text} (block: ${
-      this.currentBlockHeight
-    }). Events => ${JSON.stringify(this.events)}`;
-    this.loopSpinner.succeed();
+    if (this.startSpinner) {
+      this.loopSpinner.text = `> ${text} (block: ${
+        this.currentBlockHeight
+      }). Events => ${JSON.stringify(this.events)}`;
+      this.loopSpinner.succeed();
+    }
   }
 
   validateEvent(eventLabel, id) {
-    console.log("validate event");
+    // console.log("validate event");
     for (const event of this.events[eventLabel]) {
       switch (eventLabel) {
         case "ResponseMessage":
@@ -95,29 +97,35 @@ class Monitor {
     return false;
   }
 
-  async waitForEvents(eventLabel, id) {
-    // const spinner = ora(
-    //   `> Waiting for event ${eventLabel} with id ${id}`
-    // ).start();
+  async waitForEvents(eventLabel, id, spinner = null) {
     return new Promise(resolve => {
       // check if events are already available
       if (this.events[eventLabel].length > 0) {
         const check = this.validateEvent(eventLabel, id);
         if (check) {
-          // spinner.succeed(`> Event ${eventLabel} with id ${id} found`);
           resolve();
         }
       } else {
         // if events are not available
         // wait for the next loop iteration
         const checkForEvents = () => {
-          this.loopSpinner.text = `> Waiting for events.. (block: ${
-            this.currentBlockHeight
-          }). Events => ${JSON.stringify(this.events)}`;
+          if (spinner != null) {
+            setTimeout(() => {
+              spinner.suffixText = `> Waiting for events.. (block: ${
+                this.currentBlockHeight
+              }). Events => ${JSON.stringify(this.events)}`;
+            }, 2000);
+          }
+          if (this.startSpinner) {
+            setTimeout(() => {
+              this.loopSpinner.text = `> Waiting for events.. (block: ${
+                this.currentBlockHeight
+              }). Events => ${JSON.stringify(this.events)}`;
+            }, 2000);
+          }
           if (this.events[eventLabel].length > 0) {
             const check = this.validateEvent(eventLabel, id);
             if (check) {
-              // spinner.succeed(`> Event ${eventLabel} with id ${id} found`);
               resolve();
             }
           } else {
@@ -267,7 +275,7 @@ class Monitor {
                 //   console.log(events);
                 // }
                 this.events[eventName] = this.events[eventName].concat(events);
-                console.log(this.events);
+                // console.log(this.events);
               }
             });
           }
