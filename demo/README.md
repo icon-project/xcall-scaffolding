@@ -1,16 +1,16 @@
-# xCall Scaffolding - Contract deployment and E2E testing.
+# xCall Scaffolding - Contract deployment and Demos.
 
 ## Installation
 
-Before running the deployment and e2e testing scripts you need to first install the required packages in the project by running the following command:
+Before running the deployment and the demos you need to first install the required packages in the project by running the following command:
 
 ```bash
 npm install
 ```
 
-## Deployment and E2E testing
+## Deployment and Running Demos
 
-To deploy the contracts for each example dApp you have to create an environment file (`.env` file) inside the `/scripts/` folder at the root of the project.
+To deploy the contracts for each example dApp you have to create an environment file (`.env.testnet` file) inside the `/demo/` folder at the root of the project.
 
 Inside the environment file you MUST specify the following variables:
 ```env
@@ -20,12 +20,12 @@ EVM_PRIVATE_KEY="private key of the evm wallet to use"
 JVM_PRIVATE_KEY="private key of the jvm/icon wallet to use"
 EVM_XCALL_ADDRESS="xCall address on evm chain"
 JVM_XCALL_ADDRESS="xCall address on jvm chain"
-EVM_NETWORK_LABEL="BTP chain id for evm chain"
-JVM_NETWORK_LABEL="BTP chain id for jvm chain"
+EVM_NETWORK_LABEL="Network chain id for evm chain"
+JVM_NETWORK_LABEL="Network chain id for jvm chain"
 JVM_NID="Network id for jvm chain"
 ```
 
-The following is an example of how the `.env` file should look like when working with Berlin and Sepolia networks:
+The following is an example of how the `.env.testnet` file should look like when working with Berlin and Sepolia networks:
 
 ```env
 # url of the evm chain rpc node
@@ -41,30 +41,30 @@ EVM_PRIVATE_KEY="0x1d0.....79b"
 JVM_PRIVATE_KEY="0a0.....e03"
 
 # address of the xcall contract on the evm chain
-EVM_XCALL_ADDRESS="0x694C1f5Fb4b81e730428490a1cE3dE6e32428637"
+EVM_XCALL_ADDRESS="0x8E302b2fD7C10A0033e48EB0602Db3C7d6E0F506"
 
 # address of the xcall contract on the jvm chain
-JVM_XCALL_ADDRESS="cxf4958b242a264fc11d7d8d95f79035e35b21c1bb"
+JVM_XCALL_ADDRESS="cx15a339fa60bd86225050b22ea8cd4a9d7cd8bb83"
 
 # BTP network ID of the jvm chain
-JVM_NETWORK_LABEL="0x7.icon"
+JVM_NETWORK_LABEL="0x2.icon"
 
 # BTP network ID of the evm chain
 EVM_NETWORK_LABEL="0xaa36a7.eth2"
 
 # network if of the jvm chain
-JVM_NID=7
+JVM_NID=2
 ```
 
 The wallets for each chain should have enough funds to pay for the gas required to deploy the contracts.
 
-Once the `.env` file has been defined correctly you can run the following command inside the `/scripts/` folder to deploy the contracts:
+Once the `.env.testnet` file has been defined correctly you can run the following command inside the `/demo/` folder to deploy the contracts:
 
 ```bash
-npm run deploy
+npm run deploy-testnet
 ```
 
-The following command will execute the E2E tests:
+The following command will execute the demo:
 ```bash
-npm run test-e2e
+npm run demo-testnet-helloWorld
 ```

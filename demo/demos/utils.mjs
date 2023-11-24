@@ -1,6 +1,7 @@
-const { Web3 } = require("web3");
-const { ethers } = require("ethers");
-const { config, utils } = require("../utils");
+import { Web3 } from "web3";
+import { ethers } from "ethers";
+import utilIndex from "../utils/index.mjs";
+const { config, utils } = utilIndex;
 const {
   EVM_RPC,
   EVM_PRIVATE_KEY,
@@ -83,47 +84,77 @@ function filterCallExecutedEventEvm(msgId) {
   return filterEventEvm(xCallContract, "CallExecuted", msgId);
 }
 
-async function waitCallMessageEventEvm(eventFilter, maxMinutesToWait = 20) {
+async function waitCallMessageEventEvm(
+  eventFilter,
+  spinner,
+  maxMinutesToWait = 20
+) {
   try {
     const xCallContract = getXcallContractObject();
-    return await waitEventEvm(xCallContract, eventFilter, maxMinutesToWait);
+    return await waitEventEvm(
+      xCallContract,
+      eventFilter,
+      spinner,
+      maxMinutesToWait
+    );
   } catch (e) {
     console.log("Error waiting for CallMessage event: ", e);
     throw new Error("Error waiting for CallMessage event");
   }
 }
 
-async function waitCallExecutedEventEvm(eventFilter, maxMinutesToWait = 20) {
+async function waitCallExecutedEventEvm(
+  eventFilter,
+  spinner,
+  maxMinutesToWait = 20
+) {
   try {
     const xCallContract = getXcallContractObject();
-    return await waitEventEvm(xCallContract, eventFilter, maxMinutesToWait);
+    return await waitEventEvm(
+      xCallContract,
+      eventFilter,
+      spinner,
+      maxMinutesToWait
+    );
   } catch (e) {
     console.log("Error waiting for CallExecuted event: ", e);
     throw new Error("Error waiting for CallExecuted event");
   }
 }
 
-async function waitEventEvm(contract, eventFilter, maxMinutesToWait = 20) {
+async function waitEventEvm(
+  contract,
+  eventFilter,
+  spinner = null,
+  maxMinutesToWait = 20
+) {
   let height = (await contract.provider.getBlockNumber()) - 5;
   let next = height + 1;
   const maxSecondsToWait = maxMinutesToWait * 60;
   let secondsWaited = 0;
   while (secondsWaited < maxSecondsToWait) {
-    if (height == next) {
-      await sleep(1000);
-      secondsWaited++;
-      next = (await contract.provider.getBlockNumber()) + 1;
-      continue;
-    }
-    for (; height < next; height++) {
-      console.log(`-- Waiting for event on EVM Chain: block height ${height}`);
-      const events = await contract.queryFilter(eventFilter, height);
-      if (events.length > 0) {
-        return events;
+    try {
+      if (height == next) {
+        await sleep(1000);
+        secondsWaited++;
+        next = (await contract.provider.getBlockNumber()) + 1;
+        continue;
       }
+      for (; height < next; height++) {
+        if (spinner != null) {
+          spinner.suffixText = `\n   -- Waiting for event on EVM Chain: block height ${height}`;
+        }
+        const events = await contract.queryFilter(eventFilter, height);
+        if (events != null && events.length > 0) {
+          return events;
+        }
+      }
+    } catch (err) {
+      spinner.suffixText = `\n   -- Error waiting for event on EVM Chain: ${err.message}`;
     }
   }
-  throw new Error("Timeout waiting for event on EVM Chain");
+  return null;
+  // throw new Error("Timeout waiting for event on EVM Chain");
 }
 
 async function executeCallEvm(id, data) {
@@ -151,22 +182,33 @@ async function initializeEvmContract(
       destinationBtpAddress
     );
   } catch (e) {
-    console.log("Error invoking initialize on EVM Chain: ", e);
-    throw new Error("Error invoking initialize on EVM Chain");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
 async function sendSignedTxEvm(contract, method, ...params) {
   try {
     const txParams = {
-      gasLimit: 15000000
+      gasPrice: ethers.utils.parseUnits("50", "gwei"),
+      gasLimit: 10000000
+      // gasLimit: 15000000
     };
     const tx = await contract[method](...params, txParams);
-    const txHash = await tx.wait(1);
-    return txHash;
+    const txWaited = await tx.wait(1);
+    return {
+      txHash: tx.hash,
+      txObj: txWaited
+    };
   } catch (e) {
-    console.log("Error sending signed tx on EVM Chain: ", e);
-    throw new Error("Error sending signed tx on EVM Chain");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
@@ -313,7 +355,7 @@ async function filterEventFromBlockJvm(block, sig, address) {
 function responseMessageEventListener(height) {
   return contractEventMonitor(
     height,
-    "ResponseMessage(int,int,str)",
+    "ResponseMessage(int,int)",
     JVM_XCALL_ADDRESS
   );
 }
@@ -331,7 +373,7 @@ async function waitResponseMessageEventJvm(id) {
 
 async function waitRollbackExecutedEventJvm(id) {
   try {
-    const sig = "RollbackExecuted(int,int,str)";
+    const sig = "RollbackExecuted(int)";
     return await waitEventFromTrackerJvm(sig, JVM_XCALL_ADDRESS, id);
   } catch (e) {
     console.log("Error waiting for ResponseMessage event: ", e.message);
@@ -339,37 +381,49 @@ async function waitRollbackExecutedEventJvm(id) {
   }
 }
 
-async function getXcallJvmFee(network, useRollback = true) {
+async function getXcallJvmFee(
+  network,
+  useRollback = true,
+  contract = JVM_XCALL_ADDRESS,
+  service = JVM_SERVICE
+) {
   try {
     const params = {
       _net: network,
       _rollback: useRollback ? "0x1" : "0x0"
     };
     const txObj = new CallBuilder()
-      .to(JVM_XCALL_ADDRESS)
+      .to(contract)
       .method("getFee")
       .params(params)
       .build();
 
-    return await JVM_SERVICE.call(txObj).execute();
+    return await service.call(txObj).execute();
   } catch (e) {
-    console.log("Error getting xcall fee on JVM Chain: ", e.message);
-    throw new Error("Error getting xcall fee on JVM Chain");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
+// invokeJvmContractMethod(method, dappContract, params, fee);
 async function invokeJvmContractMethod(
   method,
   contract,
+  wallet = JVM_WALLET,
+  nid = JVM_NID,
+  service = JVM_SERVICE,
   params = null,
   value = null
 ) {
   try {
     const txObj = new CallTransactionBuilder()
-      .from(JVM_WALLET.getAddress())
+      .from(wallet.getAddress())
       .to(contract)
       .stepLimit(IconConverter.toBigNumber(20000000))
-      .nid(IconConverter.toBigNumber(JVM_NID))
+      .nid(IconConverter.toBigNumber(nid))
       .nonce(IconConverter.toBigNumber(1))
       .version(IconConverter.toBigNumber(3))
       .timestamp(new Date().getTime() * 1000)
@@ -383,30 +437,101 @@ async function invokeJvmContractMethod(
     }
 
     const formattedTxObj = txObj.build();
-    const signedTx = new SignedTransaction(formattedTxObj, JVM_WALLET);
-    return await JVM_SERVICE.sendTransaction(signedTx).execute();
+    // console.log("txObject");
+    // console.log(formattedTxObj);
+    const signedTx = new SignedTransaction(formattedTxObj, wallet);
+    const result = await service.sendTransaction(signedTx).execute();
+    return {
+      txHash: result,
+      txObj: formattedTxObj
+    };
   } catch (e) {
-    console.log("Error invoking JVM contract method: ", e);
-    throw new Error("Error invoking JVM contract method");
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
   }
 }
 
-async function initializeJvmContract(dappContract, params) {
-  const fee = await getXcallJvmFee(EVM_NETWORK_LABEL);
-  return await invokeJvmContractMethod("initialize", dappContract, params, fee);
+async function initializeJvmContract(
+  dappContract,
+  params,
+  destinationNetworkLabel = EVM_NETWORK_LABEL,
+  rollback = true,
+  contract = JVM_XCALL_ADDRESS,
+  service = JVM_SERVICE,
+  wallet = JVM_WALLET,
+  nid = JVM_NID
+) {
+  try {
+    const fee = await getXcallJvmFee(
+      destinationNetworkLabel,
+      rollback,
+      contract,
+      service
+    );
+    if (typeof fee !== "string" && fee.error) {
+      throw new Error(fee.error);
+    }
+    return await invokeJvmContractMethod(
+      "initialize",
+      dappContract,
+      wallet,
+      nid,
+      service,
+      params,
+      fee
+    );
+  } catch (err) {
+    return {
+      txHash: null,
+      txObj: null,
+      error: err
+    };
+  }
 }
 
 async function invokeJvmDAppMethod(
   dappContract,
   method,
   params,
-  rollback = true
+  rollback = true,
+  destinationNetworkLabel = EVM_NETWORK_LABEL,
+  jvmXCallContract = JVM_XCALL_ADDRESS,
+  service = JVM_SERVICE,
+  wallet = JVM_WALLET,
+  nid = JVM_NID
 ) {
-  const fee = await getXcallJvmFee(EVM_NETWORK_LABEL, rollback);
-  return await invokeJvmContractMethod(method, dappContract, params, fee);
+  try {
+    const fee = await getXcallJvmFee(
+      destinationNetworkLabel,
+      rollback,
+      jvmXCallContract,
+      service
+    );
+    if (typeof fee !== "string" && fee.error) {
+      throw new Error(fee.error);
+    }
+    return await invokeJvmContractMethod(
+      method,
+      dappContract,
+      wallet,
+      nid,
+      service,
+      params,
+      fee
+    );
+  } catch (err) {
+    return {
+      txHash: null,
+      txObj: null,
+      error: err
+    };
+  }
 }
-function getBtpAddress(label, address) {
-  return `btp://${label}/${address}`;
+function getNetworkAddress(label, address) {
+  return `${label}/${address}`;
 }
 
 function decodeMessage(msg) {
@@ -418,7 +543,7 @@ function encodeMessage(msg) {
 }
 
 function filterCallMessageSentEventJvm(eventlogs) {
-  return filterEventJvm(eventlogs, "CallMessageSent(Address,str,int,int)");
+  return filterEventJvm(eventlogs, "CallMessageSent(Address,str,int)");
 }
 
 function filterEventJvm(eventlogs, sig, address = JVM_XCALL_ADDRESS) {
@@ -444,10 +569,18 @@ function parseCallMessageSentEventJvm(event) {
   };
 }
 
-module.exports = {
+function parseEvmEventsFromBlock(block, eventName = "CallExecuted") {
+  // const logs = block.events.filter(event => {
+  //   return event.event === eventName;
+  // });
+  // return logs;
+  // return JSON.stringify(block);
+}
+
+export default {
   initializeJvmContract,
   initializeEvmContract,
-  getBtpAddress,
+  getNetworkAddress,
   isValidHexAddress,
   invokeJvmDAppMethod,
   decodeMessage,
@@ -463,5 +596,6 @@ module.exports = {
   waitResponseMessageEventJvm,
   waitEventFromTrackerJvm,
   waitRollbackExecutedEventJvm,
-  getBlockJvm
+  getBlockJvm,
+  parseEvmEventsFromBlock
 };

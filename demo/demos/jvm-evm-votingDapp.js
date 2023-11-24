@@ -16,6 +16,7 @@ const {
   // waitResponseMessageEventJvm
   // waitRollbackExecutedEventJvm
 } = require("./utils");
+
 const { Monitor } = require("../utils/monitor");
 const {
   JVM_XCALL_ADDRESS,
@@ -26,6 +27,23 @@ const {
 const { getTxResult, isValidHexAddress, JVM_SERVICE, sleep } = utils;
 
 async function votingDappE2E(deployments) {
+  // test results
+  const testResults = {
+    initializeJvmContract: false,
+    validateInitializeTxJvm: false,
+    initializeEvmContract: false,
+    invokeJvmDAppMethod: false,
+    filterCallMessageSentEventJvm: false,
+    parseCallMessageSentEventJvm: false,
+    filterCallMessageEventEvm: false,
+    waitCallMessageEventEvm: false,
+    executeCallEvm: false,
+    filterCallExecutedEventEvm: false,
+    waitCallExecutedEventEvm: false,
+    waitResponseMessageEventJvm: false,
+    waitRollbackExecutedEventJvm: false
+  };
+
   // get BTP addresses
   const evmDappBtpAddress = getBtpAddress(
     EVM_NETWORK_LABEL,
@@ -42,9 +60,10 @@ async function votingDappE2E(deployments) {
     _sourceXCallContract: JVM_XCALL_ADDRESS,
     _destinationBtpAddress: evmDappBtpAddress
   });
+  testResults.initializeJvmContract = isValidHexAddress(request1, "0x", 66);
   console.log(
     `> Test: invoking 'initialize' method on JVM contract: ${
-      isValidHexAddress(request1, "0x", 66) == true ? "SUCCESS" : "FAILURE"
+      testResults.initializeJvmContract == true ? "SUCCESS" : "FAILURE"
     }`
   );
   const txResult1 = await getTxResult(request1);
@@ -53,9 +72,10 @@ async function votingDappE2E(deployments) {
   const monitor = new Monitor(JVM_SERVICE, JVM_XCALL_ADDRESS, initBlock);
   monitor.start();
 
+  testResults.validateInitializeTxJvm = txResult1.status == 1;
   console.log(
     `> Test: validate tx for invoking 'initialize' method on JVM contract: ${
-      txResult1.status == 1 ? "SUCCESS" : "FAILURE"
+      testResults.validateInitializeTxJvm == true ? "SUCCESS" : "FAILURE"
     }`
   );
 
@@ -66,32 +86,26 @@ async function votingDappE2E(deployments) {
     EVM_XCALL_ADDRESS,
     20
   );
+  testResults.initializeEvmContract = isValidHexAddress(
+    request2.transactionHash,
+    "0x",
+    66
+  );
   console.log(
     `> Test: invoking 'initialize' method on EVM contract: ${
-      isValidHexAddress(request2.transactionHash, "0x", 66) == true
-        ? "SUCCESS"
-        : "FAILURE"
+      testResults.initializeEvmContract == true ? "SUCCESS" : "FAILURE"
     }`
   );
 
   // send a message to EVM dApp and test results
-  // const msg = encodeMessage("Hello World!");
-  // const rollbackData = encodeMessage("Hello World! Rollback");
-  const rollbackData = null;
-  // const requestParams = {
-  //   payload: msg
-  // };
-  // if (rollbackData != null) {
-  //   requestParams.rollback = rollbackData;
-  // }
-
   const request3 = await invokeJvmDAppMethod(
     deployments.VotingDapp.jvm,
     "voteYes"
   );
+  testResults.invokeVoteYesMethodOnJvm = isValidHexAddress(request3, "0x", 66);
   console.log(
     `> Test: invoking 'voteYes' method on JVM contract: ${
-      isValidHexAddress(request3, "0x", 66) == true ? "SUCCESS" : "FAILURE"
+      testResults.invokeVoteYesMethodOnJvm == true ? "SUCCESS" : "FAILURE"
     }`
   );
   const txResult2 = await getTxResult(request3);
@@ -153,6 +167,9 @@ async function votingDappE2E(deployments) {
       event3.length > 0 ? "SUCCESS" : "FAILURE"
     }`
   );
+
+  // set rollbackData to any value to test ResponseMessage event
+  const rollbackData = "";
 
   // If rollbackData fetch Response Message event.
   // if revert was raised on EVM chain, fetch rollbackMessage event from JVM contract

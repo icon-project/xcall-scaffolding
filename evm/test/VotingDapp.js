@@ -1,6 +1,8 @@
 const VotingDapp = artifacts.require("VotingDapp");
 const { strToHex, isValidEVMAddress } = require("../utils/utils");
 
+const VOTES_CAP = 10;
+
 contract("VotingDapp", accounts => {
   const deployer = accounts[0];
   const voteYes = strToHex("voteYes");
@@ -8,7 +10,12 @@ contract("VotingDapp", accounts => {
   // test #1 - should return the total votes
   it("should cast a vote for yes and return the total votes", async () => {
     const dapp = await VotingDapp.deployed();
-    await dapp.handleCallMessage("btp://network/account", voteYes, {
+    // initialize the contract with the votes cap
+    await dapp.initialize(
+      "0x627306090abaB3A6e1400e9345bC60c78a8BEf57",
+      VOTES_CAP
+    );
+    await dapp.handleCallMessage("network/account", voteYes, {
       from: deployer
     });
     const response = await dapp.getVotes();
@@ -25,7 +32,7 @@ contract("VotingDapp", accounts => {
   });
 
   // test #3 - should return a valid contract address
-  it("returned svcCall address should be equal to supplied address in constructor during deployment", async () => {
+  it("returned svcCall address should be equal to supplied address in transaction calling 'initialize' method", async () => {
     const dapp = await VotingDapp.deployed();
     const svcCall = await dapp.getCallService();
     assert(
@@ -38,9 +45,9 @@ contract("VotingDapp", accounts => {
   it("should revert transaction when votes cap is reached", async () => {
     const dapp = await VotingDapp.deployed();
     let revertReason = null;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < VOTES_CAP; i++) {
       try {
-        await dapp.handleCallMessage("btp://network/account", voteYes, {
+        await dapp.handleCallMessage("network/account", voteYes, {
           from: deployer
         });
       } catch (e) {
@@ -54,11 +61,10 @@ contract("VotingDapp", accounts => {
   });
 
   // test #5 - should return the votes cap
-  it("should return the votes cap and the value should be 10", async () => {
+  it(`should return the votes cap and the value should be ${VOTES_CAP}`, async () => {
     const dapp = await VotingDapp.deployed();
     const response = await dapp.getVotesCap();
     const votesCap = response.toString();
-    console.log("votesCap", votesCap);
-    assert(votesCap === "10", "The votes cap is not 10");
+    assert(votesCap === `${VOTES_CAP}`, `The votes cap is not ${VOTES_CAP}`);
   });
 });

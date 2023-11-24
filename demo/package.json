@@ -2,26 +2,30 @@
   "name": "scripts",
   "version": "1.0.0",
   "description": "",
+  "type": "commonjs",
   "main": "deploy.js",
   "scripts": {
     "deploy": "node deploy.js",
     "deploy-local": "NODE_ENV=local node deploy.js",
     "deploy-testnet": "NODE_ENV=testnet node deploy.js",
-    "test-e2e": "node e2e/e2e-main.js",
-    "test-e2e-local": "NODE_ENV=local node e2e/e2e-main.js",
-    "test-e2e-testnet": "NODE_ENV=testnet node e2e/e2e-main.js"
+    "demo-testnet": "NODE_ENV=testnet node demos/main.mjs",
+    "demo-testnet-helloWorld": "NODE_ENV=testnet SINGLE_TEST=helloWorldDemo node demos/main.mjs",
+    "demo-testnet-votingDapp": "NODE_ENV=testnet SINGLE_TEST=votingDappDemo node demos/main.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chalk": "^5.3.0",
     "dotenv": "^16.3.1",
     "ethers": "5.7.2",
     "icon-sdk-js": "^1.5.1",
+    "ora": "^7.0.1",
     "web3": "^4.0.3",
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "eslint": "^8.46.0"
+    "eslint": "^8.46.0",
+    "ts-node": "^10.9.1"
   }
 }

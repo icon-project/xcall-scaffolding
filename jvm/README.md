@@ -7,6 +7,7 @@ The source code for the contracts can be found in the `./contracts/` folder.
 Read the design documents for each example project:
 
 1. [Cross Chain Voting dApp](../docs/cross-chain-voting-dapp.md)
+2. [Hello World dApp](../docs/hello-world.md)
 
 ## Build
 

@@ -81,12 +81,6 @@ const xcallAbi = [
         internalType: "uint256",
         name: "_sn",
         type: "uint256"
-      },
-      {
-        indexed: false,
-        internalType: "int256",
-        name: "_nsn",
-        type: "int256"
       }
     ],
     name: "CallMessageSent",
@@ -119,12 +113,6 @@ const xcallAbi = [
         internalType: "int256",
         name: "_code",
         type: "int256"
-      },
-      {
-        indexed: false,
-        internalType: "string",
-        name: "_msg",
-        type: "string"
       }
     ],
     name: "ResponseMessage",
@@ -138,18 +126,6 @@ const xcallAbi = [
         internalType: "uint256",
         name: "_sn",
         type: "uint256"
-      },
-      {
-        indexed: false,
-        internalType: "int256",
-        name: "_code",
-        type: "int256"
-      },
-      {
-        indexed: false,
-        internalType: "string",
-        name: "_msg",
-        type: "string"
       }
     ],
     name: "RollbackExecuted",
@@ -213,13 +189,48 @@ const xcallAbi = [
     type: "function"
   },
   {
-    inputs: [],
-    name: "getBtpAddress",
-    outputs: [
+    inputs: [
       {
         internalType: "string",
-        name: "",
+        name: "_nid",
         type: "string"
+      }
+    ],
+    name: "getDefaultConnection",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "_net",
+        type: "string"
+      },
+      {
+        internalType: "bool",
+        name: "_rollback",
+        type: "bool"
+      },
+      {
+        internalType: "string[]",
+        name: "_sources",
+        type: "string[]"
+      }
+    ],
+    name: "getFee",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256"
       }
     ],
     stateMutability: "view",
@@ -244,6 +255,32 @@ const xcallAbi = [
         internalType: "uint256",
         name: "",
         type: "uint256"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getNetworkAddress",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "getNetworkId",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string"
       }
     ],
     stateMutability: "view",
@@ -339,9 +376,40 @@ const xcallAbi = [
   {
     inputs: [
       {
-        internalType: "address",
-        name: "_bmc",
-        type: "address"
+        internalType: "uint256",
+        name: "_sn",
+        type: "uint256"
+      }
+    ],
+    name: "handleError",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "_from",
+        type: "string"
+      },
+      {
+        internalType: "bytes",
+        name: "_msg",
+        type: "bytes"
+      }
+    ],
+    name: "handleMessage",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "_nid",
+        type: "string"
       }
     ],
     name: "initialize",
@@ -381,12 +449,69 @@ const xcallAbi = [
   {
     inputs: [
       {
+        internalType: "string",
+        name: "_to",
+        type: "string"
+      },
+      {
+        internalType: "bytes",
+        name: "_data",
+        type: "bytes"
+      },
+      {
+        internalType: "bytes",
+        name: "_rollback",
+        type: "bytes"
+      },
+      {
+        internalType: "string[]",
+        name: "sources",
+        type: "string[]"
+      },
+      {
+        internalType: "string[]",
+        name: "destinations",
+        type: "string[]"
+      }
+    ],
+    name: "sendCallMessage",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256"
+      }
+    ],
+    stateMutability: "payable",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
         internalType: "address",
         name: "_address",
         type: "address"
       }
     ],
     name: "setAdmin",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        internalType: "string",
+        name: "_nid",
+        type: "string"
+      },
+      {
+        internalType: "address",
+        name: "connection",
+        type: "address"
+      }
+    ],
+    name: "setDefaultConnection",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function"
@@ -438,11 +563,35 @@ const xcallAbi = [
         internalType: "bytes",
         name: "data",
         type: "bytes"
+      },
+      {
+        internalType: "string[]",
+        name: "protocols",
+        type: "string[]"
       }
     ],
     name: "tryHandleCallMessage",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function"
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "_sn",
+        type: "uint256"
+      }
+    ],
+    name: "verifySuccess",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool"
+      }
+    ],
+    stateMutability: "view",
     type: "function"
   }
 ];
