@@ -13,11 +13,13 @@ const {
   initializeEvmContract,
   getNetworkAddress,
   invokeJvmDAppMethod,
+  invokeJvmContractMethod,
   // decodeMessage,
   encodeMessage,
   filterCallMessageSentEventJvm,
   parseCallMessageSentEventJvm,
   filterCallMessageEventEvm,
+  filterRollbackExecutedEventJvm,
   waitCallMessageEventEvm,
   executeCallEvm,
   filterCallExecutedEventEvm,
@@ -168,12 +170,14 @@ async function helloWorldDemo(deployments) {
     spinner3.succeed();
 
     // send a message to EVM dApp and test results
-    const msg = encodeMessage("Hello World!");
-    const rollbackData = encodeMessage("Hello World! Rollback");
+    // if msg is the string "executeRollback" a rollback will be executed
+    const msg = encodeMessage("executeRollback");
+    const rollbackData = encodeMessage("rollback");
     // const rollbackData = null;
     const requestParams = {
       payload: msg
     };
+
     if (rollbackData != null) {
       requestParams.rollback = rollbackData;
     }
@@ -367,7 +371,25 @@ async function helloWorldDemo(deployments) {
     // If rollbackData fetch Response Message event.
     // if revert was raised on EVM chain, fetch rollbackMessage event from JVM contract
     if (rollbackData != null) {
-      console.log("> sn: ", parsedEventlog1._sn);
+      // wait for ResponseMessage event to be raised on JVM xcall contract on origin chain
+      // fetch block height at beginning of loop to fetch events
+      // if block height reached a maximum of 100 blocks,
+      // stop the loop
+      const initBlock = monitor.currentBlockHeight;
+      const maxBlock = initBlock + 750;
+      console.log(
+        "> sn (id that identifies the event we are waiting for): ",
+        parsedEventlog1._sn
+      );
+      console.log(
+        "> initBlock (blockheight when `executeCall` method was executed): ",
+        initBlock
+      );
+      console.log(
+        "> maxBlock (after reaching this block height the loop will be stoppped and the event fetch will fail): ",
+        maxBlock
+      );
+
       const spinner12 = ora({
         text: `> Test: Wait for 'ResponseMessage' event to be raised on JVM contract: `,
         suffixText: `${chalk.yellow("Pending")}.`,
@@ -377,16 +399,17 @@ async function helloWorldDemo(deployments) {
         spinner: process.argv[2]
       }).start();
 
-      // TODO from here
-      // throw new Error("stop");
-      // monitor.spinnerStart();
       await monitor.waitForEvents(
         "ResponseMessage",
         parsedEventlog1._sn,
-        spinner12
+        spinner12,
+        maxBlock
       );
-      const responseMsgEvents = monitor.events.ResponseMessage;
-      if (responseMsgEvents == null) {
+      const responseMsgEvents = monitor.events.ResponseMessage.filter(
+        event => event.indexed[1] == parsedEventlog1._sn
+      );
+
+      if (responseMsgEvents.length == 0) {
         spinner12.suffixText = chalk.red("FAILURE") + ".\n";
         spinner12.fail();
         monitor.close();
@@ -397,7 +420,130 @@ async function helloWorldDemo(deployments) {
         ".\n" +
         chalk.dim(`   -- Event: ${JSON.stringify(responseMsgEvents)}\n`);
       spinner12.succeed();
+
+      // wait for RollbackMessage event to be raised on JVM xcall contract on origin chain
+      const spinner13 = ora({
+        text: `> Test: Wait for 'RollbackMessage' event to be raised on JVM contract: `,
+        suffixText: `${chalk.yellow("Pending")}.`,
+        spinner: process.argv[2]
+      }).start();
+
+      if (msg !== encodeMessage("executeRollback")) {
+        // if the encoded message is not "executeRollback"
+        // the rollback event will never be raised
+        spinner13.suffixText =
+          chalk.red("FAILURE.") +
+          chalk.dim(
+            "To execute a rollback with this demo the cross chain message to send must be the literal string 'executeRollback' encoded"
+          ) +
+          ".\n";
+        spinner13.fail();
+        monitor.close();
+        return;
+      }
+
+      await monitor.waitForEvents(
+        "RollbackMessage",
+        parsedEventlog1._sn,
+        spinner13,
+        maxBlock
+      );
+
+      const rollbackMsgEvents = monitor.events.RollbackMessage.filter(
+        event => event.indexed[1] == parsedEventlog1._sn
+      );
+      if (rollbackMsgEvents.length == 0) {
+        spinner13.suffixText = chalk.red("FAILURE") + ".\n";
+        spinner13.fail();
+        monitor.close();
+        return;
+      }
+
+      spinner13.suffixText =
+        chalk.green("SUCCESS") +
+        ".\n" +
+        chalk.dim(`   -- Event: ${JSON.stringify(rollbackMsgEvents)}\n`);
+      spinner13.succeed();
+
+      // execute rollback transaction
+      const spinner14 = ora({
+        text: `> Test: invoking 'executeRollback' method on JVM contract: `,
+        suffixText: `${chalk.yellow("Pending")}.`,
+        spinner: process.argv[2]
+      }).start();
+
+      const request5 = await invokeJvmContractMethod(
+        "executeRollback",
+        JVM_XCALL_ADDRESS,
+        JVM_WALLET,
+        JVM_NID,
+        JVM_SERVICE,
+        {
+          _sn: parsedEventlog1._sn
+        }
+      );
+
+      if (request5.txHash == null) {
+        spinner14.suffixText =
+          chalk.red("FAILURE") +
+          ".\n" +
+          chalk.dim(`   -- Error: ${JSON.stringify(request5.error)}\n`);
+        monitor.close();
+        spinner14.fail();
+        return;
+      }
+
+      spinner14.suffixText =
+        chalk.green("SUCCESS") +
+        ".\n" +
+        chalk.dim(`   -- Tx data: ${JSON.stringify(request5.txObj)}\n`);
+      spinner14.succeed();
+
+      const spinner15 = ora({
+        text: `> Test: validate tx for invoking 'executeRollback' method on JVM contract: `,
+        suffixText: `${chalk.yellow("Pending")}.`,
+        spinner: process.argv[2]
+      }).start();
+
+      const txResult3 = await getTxResult(request5.txHash);
+
+      if (txResult3 == null || txResult3.status == 0) {
+        spinner15.suffixText =
+          chalk.red("FAILURE") +
+          ".\n" +
+          chalk.dim(`   -- Tx result: ${JSON.stringify(txResult3)}\n`);
+        spinner15.fail();
+        monitor.close();
+        return;
+      }
+
+      spinner15.suffixText =
+        chalk.green("SUCCESS") +
+        ".\n" +
+        chalk.dim(`   -- Tx result: ${JSON.stringify(txResult3)}\n`);
+      spinner15.succeed();
+
+      // // catch RollbackExecuted event
+      const spinner16 = ora({
+        text: `> Test: filtering 'RollbackExecuted' event on JVM contract: `,
+        suffixText: `${chalk.yellow("Pending")}.`,
+        spinner: process.argv[2]
+      }).start();
+
+      const eventlog4 = filterRollbackExecutedEventJvm(txResult3.eventLogs);
+      if (eventlog4.length == 0) {
+        spinner16.suffixText = chalk.red("FAILURE") + ".\n";
+        spinner16.fail();
+        monitor.close();
+        return;
+      }
+      spinner16.suffixText =
+        chalk.green("SUCCESS") +
+        ".\n" +
+        chalk.dim(`   -- Event: ${JSON.stringify(eventlog4)}\n`);
+      spinner16.succeed();
     }
+
     // stop monitor
     monitor.close();
   } catch (err) {

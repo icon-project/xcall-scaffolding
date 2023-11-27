@@ -546,6 +546,10 @@ function filterCallMessageSentEventJvm(eventlogs) {
   return filterEventJvm(eventlogs, "CallMessageSent(Address,str,int)");
 }
 
+function filterRollbackExecutedEventJvm(eventlogs) {
+  return filterEventJvm(eventlogs, "RollbackExecuted(int)");
+}
+
 function filterEventJvm(eventlogs, sig, address = JVM_XCALL_ADDRESS) {
   const result = eventlogs.filter(event => {
     return (
@@ -583,6 +587,7 @@ export default {
   getNetworkAddress,
   isValidHexAddress,
   invokeJvmDAppMethod,
+  invokeJvmContractMethod,
   decodeMessage,
   encodeMessage,
   filterCallMessageSentEventJvm,
@@ -597,5 +602,6 @@ export default {
   waitEventFromTrackerJvm,
   waitRollbackExecutedEventJvm,
   getBlockJvm,
-  parseEvmEventsFromBlock
+  parseEvmEventsFromBlock,
+  filterRollbackExecutedEventJvm
 };

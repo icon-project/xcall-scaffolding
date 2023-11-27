@@ -97,7 +97,7 @@ class Monitor {
     return false;
   }
 
-  async waitForEvents(eventLabel, id, spinner = null) {
+  async waitForEvents(eventLabel, id, spinner = null, maxBlockHeight = null) {
     return new Promise(resolve => {
       // check if events are already available
       if (this.events[eventLabel].length > 0) {
@@ -109,6 +109,13 @@ class Monitor {
         // if events are not available
         // wait for the next loop iteration
         const checkForEvents = () => {
+          // if maxBlockHeight is reached, resolve and end the loop
+          if (maxBlockHeight != null) {
+            if (this.currentBlockHeight >= maxBlockHeight) {
+              resolve();
+            }
+          }
+
           if (spinner != null) {
             setTimeout(() => {
               spinner.suffixText = `> Waiting for events.. (block: ${
@@ -127,6 +134,8 @@ class Monitor {
             const check = this.validateEvent(eventLabel, id);
             if (check) {
               resolve();
+            } else {
+              setTimeout(checkForEvents, 100);
             }
           } else {
             setTimeout(checkForEvents, 100);
