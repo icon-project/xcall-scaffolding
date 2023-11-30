@@ -9,6 +9,9 @@ if (process.env.NODE_ENV != null) {
 
 require("dotenv").config({ path: ENV_PATH });
 const { xcallAbi } = require("./xcallAbi");
+
+// set default values if not set in .env file
+// process.env.EVM_RPC ??= "http://localhost:8545";
 const {
   EVM_RPC,
   JVM_RPC,

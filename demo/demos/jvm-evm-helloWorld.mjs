@@ -265,7 +265,8 @@ async function helloWorldDemo(deployments) {
       parsedEventlog1._sn
     );
     if (eventlog2 == null) {
-      spinner7.suffixText = chalk.red("FAILURE") + ".\n";
+      const prevMsg = spinner7.suffixText;
+      spinner7.suffixText = chalk.red("FAILURE") + ".\n" + prevMsg;
       spinner7.fail();
       monitor.close();
       return;
@@ -283,12 +284,10 @@ async function helloWorldDemo(deployments) {
       spinner: process.argv[2]
     }).start();
 
-    const event2 = await waitCallMessageEventEvm(eventlog2, spinner8);
+    const event2 = await waitCallMessageEventEvm(eventlog2, spinner8, 20, 5000);
     if (event2 == null) {
-      spinner8.suffixText =
-        chalk.red(
-          "FAILURE. Critical error, 'waitCallMessageEventEvm' returned 'null'"
-        ) + ".\n";
+      const prevMsg = spinner8.suffixText;
+      spinner8.suffixText = chalk.red("FAILURE") + ".\n" + prevMsg;
       spinner8.fail();
       monitor.close();
       return;

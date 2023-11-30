@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "description": "",
   "type": "commonjs",
-  "main": "deploy.js",
+  "main": "deploy.mjs",
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "scripts": {
-    "deploy": "node deploy.js",
-    "deploy-local": "NODE_ENV=local node deploy.js",
-    "deploy-testnet": "NODE_ENV=testnet node deploy.js",
+    "deploy": "node deploy.mjs",
+    "deploy-local": "NODE_ENV=local node deploy.mjs",
+    "deploy-testnet": "NODE_ENV=testnet node deploy.mjs",
     "demo-testnet": "NODE_ENV=testnet node demos/main.mjs",
     "demo-testnet-helloWorld": "NODE_ENV=testnet SINGLE_TEST=helloWorldDemo node demos/main.mjs",
     "demo-testnet-votingDapp": "NODE_ENV=testnet SINGLE_TEST=votingDappDemo node demos/main.js"
@@ -25,6 +28,8 @@
     "ws": "^8.13.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.23.3",
+    "@babel/eslint-parser": "^7.23.3",
     "eslint": "^8.46.0",
     "ts-node": "^10.9.1"
   }

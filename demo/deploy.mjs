@@ -1,4 +1,6 @@
-const { utils } = require("./utils");
+import utilIndex from "./utils/index.mjs";
+const { utils } = utilIndex;
+
 const {
   deployJvmContract,
   deployEvmContract,

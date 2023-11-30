@@ -87,7 +87,8 @@ function filterCallExecutedEventEvm(msgId) {
 async function waitCallMessageEventEvm(
   eventFilter,
   spinner,
-  maxMinutesToWait = 20
+  maxMinutesToWait = 20,
+  waitTimeBetweenRetries = 1000
 ) {
   try {
     const xCallContract = getXcallContractObject();
@@ -95,7 +96,8 @@ async function waitCallMessageEventEvm(
       xCallContract,
       eventFilter,
       spinner,
-      maxMinutesToWait
+      maxMinutesToWait,
+      waitTimeBetweenRetries
     );
   } catch (e) {
     console.log("Error waiting for CallMessage event: ", e);
@@ -126,18 +128,22 @@ async function waitEventEvm(
   contract,
   eventFilter,
   spinner = null,
-  maxMinutesToWait = 20
+  maxMinutesToWait = 20,
+  waitTimeBetweenRetries = 1000
 ) {
-  let height = (await contract.provider.getBlockNumber()) - 5;
+  const initBlock = await contract.provider.getBlockNumber();
+  let height = initBlock - 5;
   let next = height + 1;
   const maxSecondsToWait = maxMinutesToWait * 60;
   let secondsWaited = 0;
-  while (secondsWaited < maxSecondsToWait) {
+  let breakLoop = false;
+  while (secondsWaited < maxSecondsToWait && !breakLoop) {
     try {
+      await sleep(waitTimeBetweenRetries);
+      secondsWaited++;
       if (height == next) {
-        await sleep(1000);
-        secondsWaited++;
-        next = (await contract.provider.getBlockNumber()) + 1;
+        const latestBlock = await contract.provider.getBlockNumber();
+        next = latestBlock + 1;
         continue;
       }
       for (; height < next; height++) {
@@ -151,10 +157,76 @@ async function waitEventEvm(
       }
     } catch (err) {
       spinner.suffixText = `\n   -- Error waiting for event on EVM Chain: ${err.message}`;
+      const errMsg = JSON.stringify({
+        msg: err.body,
+        requestBody: err.requestBody
+      });
+      const parsedErrMsg = recursivelyParseJSON(errMsg);
+      if (
+        parsedErrMsg != null &&
+        parsedErrMsg.msg != null &&
+        parsedErrMsg.msg.error != null
+      ) {
+        if (parsedErrMsg.msg.error.message != null) {
+          if (parsedErrMsg.msg.error.message === "limit exceeded") {
+            spinner.suffixText = `\n   -- Response error => rate limit exceeded. ${JSON.stringify(
+              parsedErrMsg
+            )}`;
+            breakLoop = true;
+          }
+        }
+      }
     }
   }
   return null;
   // throw new Error("Timeout waiting for event on EVM Chain");
+}
+
+function recursivelyParseJSON(str) {
+  try {
+    return recursivelyParseJSONHelper(JSON.parse(str));
+  } catch (err) {
+    `Unexpected error running recursivelyParseJSON. input => ${str}`;
+  }
+}
+
+function recursivelyParseJSONHelper(obj) {
+  try {
+    const mainObject = { ...obj };
+    for (const key in mainObject) {
+      if (typeof mainObject[key] === "string") {
+        let parsedValue;
+        try {
+          // try to parse the string
+          parsedValue = JSON.parse(mainObject[key]);
+        } catch (innerErr) {
+          // if the parsing fails assume is a regular string
+          parsedValue = mainObject[key];
+        }
+        // replace the original string with the parsed or unparsed
+        // value
+        mainObject[key] = parsedValue;
+
+        // if the value is an object, recursively parse it
+        if (typeof mainObject[key] === "object") {
+          // recursively parse the object
+          mainObject[key] = recursivelyParseJSONHelper(mainObject[key]);
+        }
+      } else if (
+        typeof mainObject[key] === "object" &&
+        mainObject[key] != null
+      ) {
+        // recursively parse the object
+        mainObject[key] = recursivelyParseJSONHelper(mainObject[key]);
+      }
+    }
+
+    return mainObject;
+  } catch (err) {
+    throw new Error(
+      `Unexpected error running recursivelyParseJSONHelper. input => ${str}`
+    );
+  }
 }
 
 async function executeCallEvm(id, data) {
@@ -376,8 +448,8 @@ async function waitRollbackExecutedEventJvm(id) {
     const sig = "RollbackExecuted(int)";
     return await waitEventFromTrackerJvm(sig, JVM_XCALL_ADDRESS, id);
   } catch (e) {
-    console.log("Error waiting for ResponseMessage event: ", e.message);
-    throw new Error("Error waiting for ResponseMessage event");
+    console.log("Error waiting for RollbackExecuted event: ", e.message);
+    throw new Error("Error waiting for RollbackExecuted event");
   }
 }
 
@@ -603,5 +675,6 @@ export default {
   waitRollbackExecutedEventJvm,
   getBlockJvm,
   parseEvmEventsFromBlock,
-  filterRollbackExecutedEventJvm
+  filterRollbackExecutedEventJvm,
+  recursivelyParseJSON
 };
