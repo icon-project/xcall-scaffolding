@@ -97,7 +97,7 @@ pub fn handle_call_message(
     if caller != xcall_address {
         return Err(ContractError::Unauthorized {});
     }
-    let self_network = query_network_address(deps.as_ref(), &xcall_address.to_string())?.nid();
+    let self_network = query_network_address(deps.as_ref(), xcall_address.as_ref())?.nid();
     if from.nid() == self_network {
         return Err(ContractError::Unauthorized {});
     }
