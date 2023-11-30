@@ -3,8 +3,8 @@ use std::str::from_utf8;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Response,
-    StdResult, WasmMsg, to_json_binary,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Response,
+    StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_xcall_lib::network_address::NetworkAddress;
@@ -44,13 +44,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-    ExecuteMsg::SendCallMessage { to, data, rollback } => {
-        send_call_message(deps, info, to, data, rollback)
-    },
-    ExecuteMsg::HandleCallMessage { from, data } => {
-        handle_call_message(deps, info, from, data)
-    },
-}
+        ExecuteMsg::SendCallMessage { to, data, rollback } => {
+            send_call_message(deps, info, to, data, rollback)
+        }
+        ExecuteMsg::HandleCallMessage { from, data } => handle_call_message(deps, info, from, data),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -91,7 +89,7 @@ pub fn handle_call_message(
     from: NetworkAddress,
     data: Vec<u8>,
 ) -> Result<Response, ContractError> {
-    let caller = info.sender.clone();
+    let caller = info.sender;
     let xcall_address = XCALL_ADDRESS.load(deps.as_ref().storage)?;
     let payload = from_utf8(&data).map_err(|e| ContractError::DecodeError {
         error: e.to_string(),
@@ -111,15 +109,15 @@ pub fn handle_call_message(
 }
 
 pub fn event_message_received(from: &str, data: &str) -> Event {
-    return Event::new("MessageReceived")
+    Event::new("MessageReceived")
         .add_attribute("from", from)
-        .add_attribute("data", data);
+        .add_attribute("data", data)
 }
 
 pub fn event_rollbackdata_received(from: &str, data: &str) -> Event {
-    return Event::new("RollbackDataReceived")
+    Event::new("RollbackDataReceived")
         .add_attribute("from", from)
-        .add_attribute("data", data);
+        .add_attribute("data", data)
 }
 
 #[cfg(test)]
