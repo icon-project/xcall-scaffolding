@@ -1,17 +1,17 @@
-use std::str::from_utf8;
+use std::str::{from_utf8, FromStr};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Response,
-    StdResult, WasmMsg,
+    to_json_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, QueryRequest,
+    Response, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_xcall_lib::network_address::NetworkAddress;
 use cw_xcall_lib::xcall_msg::ExecuteMsg as XCallExecuteMsg;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, XCallQueryMsg};
 use crate::state::XCALL_ADDRESS;
 
 // version info for migration info
@@ -97,6 +97,11 @@ pub fn handle_call_message(
     if caller != xcall_address {
         return Err(ContractError::Unauthorized {});
     }
+    let self_network = query_network_address(deps.as_ref(), &xcall_address.to_string())?.nid();
+    if from.nid() == self_network {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let mut response = Response::new();
     // The following event is raised to notify that a message has been received
     response = response.add_event(event_message_received(&from.to_string(), payload));
@@ -118,6 +123,21 @@ pub fn event_rollbackdata_received(from: &str, data: &str) -> Event {
     Event::new("RollbackDataReceived")
         .add_attribute("from", from)
         .add_attribute("data", data)
+}
+
+pub fn query_network_address(deps: Deps, address: &str) -> Result<NetworkAddress, ContractError> {
+    let query_message = XCallQueryMsg::GetNetworkAddress {};
+
+    let query_request = QueryRequest::Wasm(cosmwasm_std::WasmQuery::Smart {
+        contract_addr: address.to_string(),
+        msg: to_json_binary(&query_message).map_err(ContractError::Std)?,
+    });
+    let address: String = deps
+        .querier
+        .query(&query_request)
+        .map_err(ContractError::Std)?;
+    let na = NetworkAddress::from_str(&address).map_err(ContractError::Std)?;
+    Ok(na)
 }
 
 #[cfg(test)]
