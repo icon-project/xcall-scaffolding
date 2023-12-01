@@ -109,14 +109,18 @@ async function getBlockJvm(label) {
 
 /*
  */
-async function getTxResult(txHash, jvmService = JVM_SERVICE) {
+async function getTxResult(txHash, jvmService = JVM_SERVICE, spinner = null) {
   const maxLoops = 10;
   let loop = 0;
+  const spinnerInitText = spinner != null ? spinner.suffixText : null;
   while (loop < maxLoops) {
     try {
       return await jvmService.getTransactionResult(txHash).execute();
     } catch (e) {
-      console.log(`txResult (pass ${loop}): ${e}`);
+      if (spinner != null) {
+        spinner.suffixText = `${spinnerInitText}. txResult (pass ${loop}): ${e}`;
+      }
+      // console.log(`txResult (pass ${loop}): ${e}`);
       loop++;
       await sleep(1000);
     }

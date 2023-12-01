@@ -118,7 +118,7 @@ async function helloWorldDemo(deployments) {
       spinner: process.argv[2]
     }).start();
 
-    const txResult1 = await getTxResult(request1.txHash);
+    const txResult1 = await getTxResult(request1.txHash, JVM_SERVICE, spinner2);
 
     if (txResult1 == null || txResult1.status == 0) {
       spinner2.suffixText =
