@@ -2,16 +2,7 @@ import { Web3 } from "web3";
 import { ethers } from "ethers";
 import utilIndex from "../utils/index.mjs";
 const { config, utils } = utilIndex;
-const {
-  EVM_RPC,
-  EVM_PRIVATE_KEY,
-  EVM_XCALL_ADDRESS,
-  JVM_XCALL_ADDRESS,
-  // JVM_NETWORK_LABEL,
-  EVM_NETWORK_LABEL,
-  JVM_NID,
-  xcallAbi
-} = config;
+const { destinationChain, originChain, xcallAbi } = config;
 const {
   isValidHexAddress,
   sleep,
@@ -29,9 +20,11 @@ const {
 
 const web3Utils = Web3.utils;
 const { CallTransactionBuilder, CallBuilder } = IconBuilder;
-const EVM_PROVIDER_ETHERS = new ethers.providers.JsonRpcProvider(EVM_RPC);
+const EVM_PROVIDER_ETHERS = new ethers.providers.JsonRpcProvider(
+  destinationChain.evm.rpc
+);
 const EVM_SIGNER_ETHERS = new ethers.Wallet(
-  EVM_PRIVATE_KEY,
+  destinationChain.evm.privateKey,
   EVM_PROVIDER_ETHERS
 );
 
@@ -47,7 +40,7 @@ function getContractObjectEvm(abi, address) {
 
 function getXcallContractObject() {
   try {
-    return getContractObjectEvm(xcallAbi, EVM_XCALL_ADDRESS);
+    return getContractObjectEvm(xcallAbi, destinationChain.evm.xcallAddress);
   } catch (e) {
     console.log("Error getting xcall contract object: ", e);
     throw new Error("Error getting xcall contract object");
@@ -428,15 +421,15 @@ function responseMessageEventListener(height) {
   return contractEventMonitor(
     height,
     "ResponseMessage(int,int)",
-    JVM_XCALL_ADDRESS
+    originChain.jvm.xcallAddress
   );
 }
 async function waitResponseMessageEventJvm(id) {
   try {
     const sig = "ResponseMessage(int,int,str)";
-    return await eventListenerJvm(sig, JVM_XCALL_ADDRESS, id);
-    // return await waitEventJvm(sig, JVM_XCALL_ADDRESS, id);
-    // return await waitEventFromTrackerJvm(sig, JVM_XCALL_ADDRESS, id);
+    return await eventListenerJvm(sig, originChain.jvm.xcallAddress, id);
+    // return await waitEventJvm(sig, originChain.jvm.xcallAddress, id);
+    // return await waitEventFromTrackerJvm(sig, originChain.jvm.xcallAddress, id);
   } catch (e) {
     console.log("Error waiting for ResponseMessage event: ", e.message);
     throw new Error("Error waiting for ResponseMessage event");
@@ -446,7 +439,7 @@ async function waitResponseMessageEventJvm(id) {
 async function waitRollbackExecutedEventJvm(id) {
   try {
     const sig = "RollbackExecuted(int)";
-    return await waitEventFromTrackerJvm(sig, JVM_XCALL_ADDRESS, id);
+    return await waitEventFromTrackerJvm(sig, originChain.jvm.xcallAddress, id);
   } catch (e) {
     console.log("Error waiting for RollbackExecuted event: ", e.message);
     throw new Error("Error waiting for RollbackExecuted event");
@@ -456,7 +449,7 @@ async function waitRollbackExecutedEventJvm(id) {
 async function getXcallJvmFee(
   network,
   useRollback = true,
-  contract = JVM_XCALL_ADDRESS,
+  contract = originChain.jvm.xcallAddress,
   service = JVM_SERVICE
 ) {
   try {
@@ -485,7 +478,7 @@ async function invokeJvmContractMethod(
   method,
   contract,
   wallet = JVM_WALLET,
-  nid = JVM_NID,
+  nid = originChain.jvm.nid,
   service = JVM_SERVICE,
   params = null,
   value = null
@@ -529,12 +522,12 @@ async function invokeJvmContractMethod(
 async function initializeJvmContract(
   dappContract,
   params,
-  destinationNetworkLabel = EVM_NETWORK_LABEL,
+  destinationNetworkLabel = destinationChain.evm.networkLabel,
   rollback = true,
-  contract = JVM_XCALL_ADDRESS,
+  contract = originChain.jvm.xcallAddress,
   service = JVM_SERVICE,
   wallet = JVM_WALLET,
-  nid = JVM_NID
+  nid = originChain.jvm.nid
 ) {
   try {
     const fee = await getXcallJvmFee(
@@ -569,11 +562,11 @@ async function invokeJvmDAppMethod(
   method,
   params,
   rollback = true,
-  destinationNetworkLabel = EVM_NETWORK_LABEL,
-  jvmXCallContract = JVM_XCALL_ADDRESS,
+  destinationNetworkLabel = destinationChain.evm.networkLabel,
+  jvmXCallContract = originChain.jvm.xcallAddress,
   service = JVM_SERVICE,
   wallet = JVM_WALLET,
-  nid = JVM_NID
+  nid = originChain.jvm.nid
 ) {
   try {
     const fee = await getXcallJvmFee(
@@ -622,7 +615,11 @@ function filterRollbackExecutedEventJvm(eventlogs) {
   return filterEventJvm(eventlogs, "RollbackExecuted(int)");
 }
 
-function filterEventJvm(eventlogs, sig, address = JVM_XCALL_ADDRESS) {
+function filterEventJvm(
+  eventlogs,
+  sig,
+  address = originChain.jvm.xcallAddress
+) {
   const result = eventlogs.filter(event => {
     return (
       event.indexed &&

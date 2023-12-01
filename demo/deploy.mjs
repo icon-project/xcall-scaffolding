@@ -1,6 +1,10 @@
 import utilIndex from "./utils/index.mjs";
-const { utils } = utilIndex;
+const { utils, config } = utilIndex;
 
+const chains = {
+  origin: config.originChain,
+  destination: config.destinationChain
+};
 const {
   deployJvmContract,
   deployEvmContract,
@@ -9,25 +13,19 @@ const {
   getTxResult,
   getDeployments,
   saveDeployments,
-  getEvmContract
+  getEvmContract,
+  validateJvmConfig,
+  validateEvmConfig,
+  validateDeployments,
+  customJvmService,
+  customJvmWallet
   // getDappsNames
 } = utils;
 
 async function main() {
   try {
-    // check if contracts have already been deployed
-    console.log("\n> Checking if contracts have already been deployed");
-    const localDeployments = getDeployments();
-
-    if (localDeployments !== null) {
-      console.log(
-        "\n> Contracts have already been deployed. If you want to re-deploy the contracts delete the file 'deployments.json'"
-      );
-      console.log("Deployments", localDeployments);
-      return;
-    } else {
-      console.log("\n> Contracts have not been deployed yet");
-    }
+    // getting deployments
+    const localDeployments = getDeployments() ?? {};
 
     // verify contracts are built
     await verifyContractsBuild();
@@ -40,30 +38,77 @@ async function main() {
 
     for (const dapp in contractPaths) {
       result[dapp] = {};
-      const dappPath = contractPaths[dapp].jvm;
-      console.log("dappPath", dappPath);
-      console.log(`\n> Deploying contracts for dApp -> ${dapp}`);
-      console.log("> Deploying JVM contract", dappPath);
-      const deployedJvm = await deployJvmContract(dappPath);
-      console.log("> JVM contract deployment tx hash: ", deployedJvm);
-      const txResult = await getTxResult(deployedJvm);
-      console.log(
-        `> JVM contract deployment status: ${
-          txResult.status == 1 ? "SUCCESS" : "FAILED"
-        }`
-      );
-      console.log(
-        "> Deployed JVM contract address: ",
-        txResult["scoreAddress"]
-      );
-      result[dapp].jvm = txResult["scoreAddress"];
+      for (const eachChain in chains) {
+        const chain = chains[eachChain];
 
-      console.log("> Deploying EVM contract", contractPaths[dapp].evm);
-      const { abi } = getEvmContract(contractPaths[dapp].evm);
-      const deployedEvm = await deployEvmContract(contractPaths[dapp].evm);
-      console.log("> Deployed EVM contract address: ", deployedEvm);
-      result[dapp].evm = deployedEvm;
-      result[dapp].evmAbi = abi;
+        if (validateJvmConfig(chain.jvm)) {
+          console.log(
+            `> Deploying dapp ${dapp} on chain ${chain.jvm.networkLabel}`
+          );
+          result[dapp][chain.jvm.networkLabel] = { contract: null, abi: null };
+          if (
+            localDeployments[dapp] != null &&
+            localDeployments[dapp][chain.jvm.networkLabel] != null &&
+            localDeployments[dapp][chain.jvm.networkLabel].contract != null
+          ) {
+            console.log(
+              `> Contract for dApp ${dapp} on chain ${chain.jvm.networkLabel} already deployed`
+            );
+            result[dapp][chain.jvm.networkLabel].contract =
+              localDeployments[dapp][chain.jvm.networkLabel].contract;
+          } else {
+            // deploy to jvm chain
+            const jvmService = customJvmService(chain.jvm.rpc);
+            const jvmWallet = customJvmWallet(chain.jvm.privateKey);
+            const jvmDappPath = contractPaths[dapp].jvm;
+            result[dapp][
+              chain.jvm.networkLabel
+            ].contract = await deployToJvmChain(
+              jvmDappPath,
+              jvmService,
+              jvmWallet,
+              chain.jvm.nid
+            );
+          }
+        } else {
+          console.log(
+            `Invalid chain configuration: ${JSON.stringify(
+              chain.jvm
+            )}. Bypassing JVM deployment`
+          );
+        }
+
+        if (validateEvmConfig(chain.evm)) {
+          console.log(
+            `> Deploying dapp ${dapp} on chain ${chain.evm.networkLabel}`
+          );
+          result[dapp][chain.evm.networkLabel] = { contract: null, abi: null };
+          if (
+            localDeployments[dapp] != null &&
+            localDeployments[dapp][chain.evm.networkLabel] != null
+          ) {
+            console.log(
+              `> Contract for dApp ${dapp} on chain ${chain.evm.networkLabel} already deployed`
+            );
+            result[dapp][chain.evm.networkLabel].contract =
+              localDeployments[dapp][chain.evm.networkLabel].contract;
+            result[dapp][chain.evm.networkLabel].evmAbi =
+              localDeployments[dapp][chain.evm.networkLabel].evmAbi;
+          } else {
+            // deploy to evm chain
+            const evmDappPath = contractPaths[dapp].evm;
+            const deployed = await deployToEvmChain(evmDappPath);
+            result[dapp][chain.evm.networkLabel].contract = deployed.address;
+            result[dapp][chain.evm.networkLabel].evmAbi = deployed.abi;
+          }
+        } else {
+          console.log(
+            `Invalid chain configuration: ${JSON.stringify(
+              chain.evm
+            )}. Bypassing EVM deployment`
+          );
+        }
+      }
     }
 
     console.log("> Deployments", result);
@@ -71,6 +116,44 @@ async function main() {
   } catch (e) {
     console.log("Error deploying contracts:", e.message);
     throw new Error("Error deploying contracts");
+  }
+}
+
+async function deployToJvmChain(dappPath, jvmService, jvmWallet, nid) {
+  try {
+    console.log("> Deploying JVM contract", dappPath);
+    const deployedJvm = await deployJvmContract(
+      dappPath,
+      jvmService,
+      jvmWallet,
+      nid
+    );
+    console.log("> JVM contract deployment tx hash: ", deployedJvm);
+    const txResult = await getTxResult(deployedJvm, jvmService);
+    console.log(
+      `> JVM contract deployment status: ${
+        txResult.status == 1 ? "SUCCESS" : "FAILED"
+      }`
+    );
+    console.log("> Deployed JVM contract address: ", txResult["scoreAddress"]);
+    return txResult["scoreAddress"];
+  } catch (err) {
+    console.log("> Error deploying JVM contract:", err.message);
+    console.log("> ByPassing JVM contract deployment");
+    // throw new Error("Error deploying JVM contract");
+  }
+}
+
+async function deployToEvmChain(evmDappPath) {
+  try {
+    console.log("> Deploying EVM contract", evmDappPath);
+    const { abi } = getEvmContract(evmDappPath);
+    const deployedEvm = await deployEvmContract(evmDappPath);
+    console.log("> Deployed EVM contract address: ", deployedEvm);
+    return { address: deployedEvm, abi: abi };
+  } catch (err) {
+    console.log("> Error deploying EVM contract:", err.message);
+    console.log("> ByPassing EVM contract deployment");
   }
 }
 
