@@ -1,9 +1,11 @@
 import utilIndex from "../utils/index.mjs";
 const { utils } = utilIndex;
 const { getDeployments } = utils;
-import helloWorldDemo from "./jvm-evm-helloWorld.mjs";
+import helloWorldDemoJVMEVM from "./jvm-evm-helloWorld.mjs";
+import helloWorldDemoJVMJVM from "./jvm-jvm-helloWorld.mjs";
 // const { votingDappE2E } = require("./e2e-votingDapp");
 const singleTest = process.env.SINGLE_TEST;
+const testType = process.env.TYPE;
 
 async function main() {
   try {
@@ -15,6 +17,8 @@ async function main() {
       );
       return;
     }
+    const helloWorldDemo =
+      testType === "jvm-evm" ? helloWorldDemoJVMEVM : helloWorldDemoJVMJVM;
     console.log("\n>>>>>> Running xCall demos");
     switch (singleTest) {
       case "helloWorldDemo":

@@ -45,7 +45,7 @@ const EVM_WALLET_WEB3 = EVM_SERVICE_WEB3.eth.accounts.privateKeyToAccount(
 );
 EVM_SERVICE_WEB3.eth.accounts.wallet.add(EVM_WALLET_WEB3);
 
-async function helloWorldDemo(deployments) {
+async function helloWorldDemoJVMEVM(deployments) {
   const dappOriginContractAddress =
     deployments.HelloWorld[originChain.jvm.networkLabel].contract;
   const dappDestinationContractAddress =
@@ -547,4 +547,4 @@ async function helloWorldDemo(deployments) {
   }
 }
 
-export default helloWorldDemo;
+export default helloWorldDemoJVMEVM;
