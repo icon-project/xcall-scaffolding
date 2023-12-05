@@ -12,10 +12,12 @@ const { config, utils } = utilIndex;
 const {
   encodeMessage,
   filterCallMessageSentEventJvm,
-  parseCallMessageSentEventJvm,
   getNetworkAddress,
   initializeJvmContract,
-  invokeJvmDAppMethod
+  invokeJvmContractMethod,
+  invokeJvmDAppMethod,
+  parseCallMessageSentEventJvm,
+  parseCallMessageEventJvm
 } = miscUtils;
 const { originChain, destinationChain } = config;
 const { getTxResult } = utils;
@@ -369,8 +371,56 @@ async function helloWorldDemoJVMJVM(deployments) {
       chalk.dim(`   -- Event data: ${JSON.stringify(callMessageEvents)}\n`);
     spinner8.succeed();
 
-    // send a message to jvm dApp on destination chain
+    // parse CallMessage event
+    const spinner9 = ora({
+      text: `> Test: parse CallMessage event from contract on destination chain:`,
+      suffixText: `${chalk.yellow("Pending")}\n`,
+      spinner: process.argv[2]
+    }).start();
 
+    const parsedEventlog2 = parseCallMessageEventJvm(callMessageEvents);
+
+    spinner9.suffixText =
+      chalk.green("SUCCESS") +
+      ".\n" +
+      chalk.dim(`   -- Event data: ${JSON.stringify(parsedEventlog2)}\n`);
+    spinner9.succeed();
+
+    // invoke executeCall on destination chain
+    const spinner10 = ora({
+      text: `> Test: invoking 'executeCall' method on destination contract:`,
+      suffixText: `${chalk.yellow("Pending")}\n`,
+      spinner: process.argv[2]
+    }).start();
+
+    const request4 = await invokeJvmContractMethod(
+      "executeCall",
+      destinationChain.jvm.xcallAddress,
+      JVM_WALLET_DESTINATION,
+      destinationChain.jvm.nid,
+      JVM_SERVICE_DESTINATION,
+      {
+        _reqId: parsedEventlog2._nsn,
+        _data: parsedEventlog2._data
+      },
+      false
+    );
+
+    if (request4.txHash == null) {
+      spinner10.suffixText =
+        chalk.red("FAILURE") +
+        ".\n" +
+        chalk.dim(`   -- Error: ${JSON.stringify(request4.error)}\n`);
+      monitorOrigin.close();
+      monitorDestination.close();
+      return;
+    }
+
+    spinner10.suffixText =
+      chalk.green("SUCCESS") +
+      ".\n" +
+      chalk.dim(`   -- Tx data: ${JSON.stringify(request4.txObj)}\n`);
+    spinner10.succeed();
     // TODO
     throw new Error("TODO: implement this test");
   } catch (err) {

@@ -473,7 +473,6 @@ async function getXcallJvmFee(
   }
 }
 
-// invokeJvmContractMethod(method, dappContract, params, fee);
 async function invokeJvmContractMethod(
   method,
   contract,
@@ -650,28 +649,43 @@ function parseEvmEventsFromBlock(block, eventName = "CallExecuted") {
   // return JSON.stringify(block);
 }
 
+function parseCallMessageEventJvm(event) {
+  const indexed = event[0].indexed || [];
+  const data = event[0].data || [];
+  const result = {
+    _from: indexed[1],
+    _to: indexed[2],
+    _sn: indexed[3],
+    _nsn: data[0],
+    _data: data[1]
+  };
+
+  return result;
+}
+
 export default {
-  initializeJvmContract,
-  initializeEvmContract,
-  getNetworkAddress,
-  isValidHexAddress,
-  invokeJvmDAppMethod,
-  invokeJvmContractMethod,
   decodeMessage,
   encodeMessage,
-  filterCallMessageSentEventJvm,
-  parseCallMessageSentEventJvm,
-  filterCallMessageEventEvm,
-  waitCallMessageEventEvm,
   executeCallEvm,
   filterCallExecutedEventEvm,
+  filterCallMessageEventEvm,
+  filterCallMessageSentEventJvm,
+  filterRollbackExecutedEventJvm,
+  getBlockJvm,
+  getNetworkAddress,
+  initializeEvmContract,
+  initializeJvmContract,
+  invokeJvmContractMethod,
+  invokeJvmDAppMethod,
+  isValidHexAddress,
+  parseCallMessageEventJvm,
+  parseCallMessageSentEventJvm,
+  parseEvmEventsFromBlock,
+  recursivelyParseJSON,
   waitCallExecutedEventEvm,
+  waitCallMessageEventEvm,
+  waitEventFromTrackerJvm,
   waitEventJvm,
   waitResponseMessageEventJvm,
-  waitEventFromTrackerJvm,
-  waitRollbackExecutedEventJvm,
-  getBlockJvm,
-  parseEvmEventsFromBlock,
-  filterRollbackExecutedEventJvm,
-  recursivelyParseJSON
+  waitRollbackExecutedEventJvm
 };
