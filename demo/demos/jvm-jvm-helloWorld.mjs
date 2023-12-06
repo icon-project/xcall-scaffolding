@@ -11,14 +11,15 @@ const { IconService } = iconSdk;
 const { config, utils } = utilIndex;
 const {
   encodeMessage,
+  filterCallExecutedEventJvm,
   filterCallMessageSentEventJvm,
+  filterRollbackExecutedEventJvm,
   getNetworkAddress,
   initializeJvmContract,
   invokeJvmContractMethod,
   invokeJvmDAppMethod,
-  parseCallMessageSentEventJvm,
   parseCallMessageEventJvm,
-  filterCallExecutedEventJvm
+  parseCallMessageSentEventJvm
 } = miscUtils;
 const { originChain, destinationChain } = config;
 const { getTxResult } = utils;
@@ -540,35 +541,137 @@ async function helloWorldDemoJVMJVM(deployments) {
         spinner: process.argv[2]
       }).start();
 
-      await monitorOrigin.waitForEvents(
-        "RollbackMessage",
-        snFromSource,
-        spinner14,
-        maxBlock
-      );
-
-      const rollbackMsgEvents = monitorOrigin.events.RollbackMessage.filter(
-        event => event.indexed[1] == snFromSource
-      );
-
-      if (rollbackMsgEvents.length == 0) {
+      if (msg !== encodeMessage("executeRollback")) {
         spinner14.suffixText =
           chalk.red("FAILURE") +
           ".\n" +
-          chalk.dim(`   -- Error: event not found\n`);
+          chalk.dim(`   -- Rollback will not be raised\n`);
         spinner14.fail();
         monitorOrigin.close();
         monitorDestination.close();
         return;
-      }
+      } else {
+        await monitorOrigin.waitForEvents(
+          "RollbackMessage",
+          snFromSource,
+          spinner14,
+          maxBlock
+        );
 
-      spinner14.suffixText =
-        chalk.green("SUCCESS") +
-        ".\n" +
-        chalk.dim(`   -- Event data: ${JSON.stringify(rollbackMsgEvents)}\n`);
-      spinner14.succeed();
-      // TODO executeRollback
-      throw new Error("TODO: implement this test");
+        const rollbackMsgEvents = monitorOrigin.events.RollbackMessage.filter(
+          event => event.indexed[1] == snFromSource
+        );
+
+        if (rollbackMsgEvents.length == 0) {
+          spinner14.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: event not found\n`);
+          spinner14.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
+
+        spinner14.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- Event data: ${JSON.stringify(rollbackMsgEvents)}\n`);
+        spinner14.succeed();
+
+        // execute rollback
+        const spinner15 = ora({
+          text: `> Test: execute rollback on source chain:`,
+          suffixText: `${chalk.yellow("Pending")}\n`,
+          spinner: process.argv[2]
+        }).start();
+
+        const request5 = await invokeJvmContractMethod(
+          "executeRollback",
+          originChain.jvm.xcallAddress,
+          JVM_WALLET_ORIGIN,
+          originChain.jvm.nid,
+          JVM_SERVICE_ORIGIN,
+          {
+            _sn: snFromSource
+          }
+        );
+
+        if (request5.txHash == null) {
+          spinner15.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: ${JSON.stringify(request5.error)}\n`);
+          spinner15.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
+
+        spinner15.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- TxHash: ${request5.txHash}\n`);
+        spinner15.succeed();
+
+        // verify transaction
+        const spinner16 = ora({
+          text: `> Test: verify transaction on source chain:`,
+          suffixText: `${chalk.yellow("Pending")}\n`,
+          spinner: process.argv[2]
+        }).start();
+
+        const txResult5 = await getTxResult(
+          request5.txHash,
+          JVM_SERVICE_ORIGIN,
+          spinner16
+        );
+
+        if (txResult5 == null || txResult5.status == 0) {
+          spinner16.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: ${JSON.stringify(txResult5)}\n`);
+          spinner16.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
+
+        spinner16.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- TxResult: ${JSON.stringify(txResult5)}\n`);
+        spinner16.succeed();
+
+        // catch RollbackExecuted event
+        const spinner17 = ora({
+          text: `> Test: catch RollbackExecuted event from contract on source chain:`,
+          suffixText: `${chalk.yellow("Pending")}\n`,
+          spinner: process.argv[2]
+        }).start();
+
+        const eventlog5 = filterRollbackExecutedEventJvm(txResult5.eventLogs);
+        if (eventlog5.length == 0) {
+          spinner17.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: event not found\n`);
+          spinner17.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
+
+        spinner17.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- Event data: ${JSON.stringify(eventlog5)}\n`);
+        spinner17.succeed();
+      }
+      console.log("> stopping block monitors on both chains");
+      monitorOrigin.close();
+      monitorDestination.close();
     }
   } catch (err) {
     console.log("Error in helloWorldDemoJVMJVM: ", err);
@@ -576,214 +679,5 @@ async function helloWorldDemoJVMJVM(deployments) {
     monitorDestination.close();
   }
 }
-// const { Monitor } = require("../utils/monitor");
-
-// const { HttpProvider, IconWallet } = IconService.default;
-
-// const HTTP_PROVIDER = new HttpProvider(rpc.lisbon);
-// const HTTP_PROVIDER2 = new HttpProvider(rpc.altair);
-
-// const ICON_SERVICE = new IconService.default(HTTP_PROVIDER);
-// const HAVAH_SERVICE = new IconService.default(HTTP_PROVIDER2);
-// const ICON_WALLET = IconWallet.loadPrivateKey(PK_ICON);
-// const HAVAH_WALLET = IconWallet.loadPrivateKey(PK_HAVAH);
-
-// if (dappSimple.lisbon == null) {
-//   throw new Error("Cant find Dapp contract deployed to lisbon");
-// }
-// if (dappSimple.altair == null) {
-//   throw new Error("Cant find Dapp contract deployed to altair");
-// }
-
-// /*
-//  */
-// async function test() {
-//   try {
-//     // initialize block monitor on destination chain (havah)
-//     const monitor = new Monitor(
-//       HAVAH_SERVICE,
-//       contract.altair["xcall-multi"],
-//       dappSimple.altair
-//     );
-//     const monitorOrigin = new Monitor(
-//       ICON_SERVICE,
-//       contract.lisbon["xcall-multi"],
-//       dappSimple.lisbon
-//     );
-
-//     // start monitor on both chains
-//     monitor.start();
-//     monitorOrigin.start();
-
-//     // message to send
-//     let msgString = "hello world";
-//     const rollbackString = "use Rollback";
-//     const triggerErrorForRollback = true;
-
-//     // to trigger a rollback, the message must be "rollback"
-//     // and in that case the `MessageReceived` event
-//     // will not be emmitted
-//     if (triggerErrorForRollback) {
-//       msgString = "rollback";
-//     }
-
-//     const msg = encodeMessage(msgString);
-//     const rollback = encodeMessage(rollbackString);
-//     const altairDestinationAddress = `${network.altair.label}/${dappSimple.altair}`;
-
-//     const paramsToAltair = {
-//       _to: altairDestinationAddress,
-//       _data: msg,
-//       _rollback: rollback
-//     };
-
-//     // send message
-//     const tx = await callDappContractMethod(
-//       "sendMessage",
-//       dappSimple.lisbon,
-//       ICON_WALLET,
-//       nid.lisbon,
-//       ICON_SERVICE,
-//       paramsToAltair,
-//       true, // set to false if paramsToAltair._rollback is null
-//       true
-//     );
-//     console.log(`\n> Sending message from Lisbon to Altair. Tx hash: ${tx}`);
-//     console.log(tx);
-
-//     // wait tx result
-//     const txResult = await getTxResult(tx, ICON_SERVICE);
-//     console.log(`\n> Sending message from Lisbon to Altair. Tx result:`);
-//     console.log(JSON.stringify(txResult));
-
-//     // filter CallMessageSentEvent
-//     const callMsgSentEvent = await filterCallMessageSentEvent(
-//       txResult.eventLogs,
-//       contract.lisbon["xcall-multi"],
-//       false
-//     );
-//     console.log(`\n> Filtering CallMessageSentEvent:`);
-//     console.log(callMsgSentEvent);
-
-//     // parse CallMessageSentEvent
-//     const parsedCallMsgSentEvent = await parseCallMessageSentEvent(
-//       callMsgSentEvent,
-//       false
-//     );
-//     console.log(`\n> Parsing CallMessageSentEvent:`);
-//     console.log(parsedCallMsgSentEvent);
-
-//     // get _sn from source
-//     const snFromSource = parsedCallMsgSentEvent._sn;
-//     console.log(`\n> Source SN: ${snFromSource}`);
-
-//     // wait for the monitor to fetch events
-//     await monitor.waitForEvents("CallMessage", snFromSource);
-
-//     // Access events after the monitor has fetched them
-//     const callMsgEvents = monitor.events.CallMessage;
-//     console.log(`\n> Filtering CallMessage event on destination:`);
-//     console.log(callMsgEvents);
-
-//     // parse CallMessage event on destination
-//     const parsedCallMsgEvent = await parseCallMessageEvent(callMsgEvents);
-//     console.log(`\n> Parsing CallMessage event on destination:`);
-//     console.log(parsedCallMsgEvent);
-
-//     const txExecuteCall = await callDappContractMethod(
-//       "executeCall",
-//       contract.altair["xcall-multi"],
-//       HAVAH_WALLET,
-//       nid.altair,
-//       HAVAH_SERVICE,
-//       {
-//         _reqId: parsedCallMsgEvent._nsn,
-//         _data: parsedCallMsgEvent._data
-//       },
-//       false
-//     );
-//     console.log(`\n> Sending transaction to executeCall:`);
-//     console.log(txExecuteCall);
-
-//     // wait tx result
-//     const txResultExecuteCall = await getTxResult(txExecuteCall, HAVAH_SERVICE);
-//     console.log(`\n> Sending transaction to executeCall. Tx result:`);
-//     console.log(txResultExecuteCall);
-//     console.log(JSON.stringify(txResultExecuteCall));
-
-//     // filter CallExecuted event
-//     const callExecutedEvent = await filterCallExecutedEvent(
-//       txResultExecuteCall.eventLogs,
-//       contract.altair["xcall-multi"]
-//     );
-//     console.log(`\n> Filtering CallExecuted event:`);
-//     console.log(callExecutedEvent);
-
-//     // fetching MessageReceived event on destination if no rollback
-//     if (!triggerErrorForRollback) {
-//       await monitor.waitForEvents("MessageReceived", msg);
-//       // Access events after the monitor has fetched them
-//       const msgReceivedEvents = monitor.events.MessageReceived;
-//       console.log(`\n> Filtering MessageReceived event on destination:`);
-//       console.log(msgReceivedEvents);
-//     } else {
-//       console.log(
-//         `\n> Bypassing fetching MessageReceived event on destination beacuse of rollback`
-//       );
-//     }
-
-//     // wait for the monitor to fetch ResponseMessage event
-//     await monitorOrigin.waitForEvents("ResponseMessage", snFromSource);
-//     const responseMsgEvents = monitorOrigin.events.ResponseMessage;
-//     console.log(`\n> Filtering ResponseMessage event on source:`);
-//     console.log(responseMsgEvents);
-
-//     if (triggerErrorForRollback) {
-//       // wait for the monitor to fetch RollbackMessage event
-//       await monitorOrigin.waitForEvents("RollbackMessage", snFromSource);
-//       const rollbackMsgEvents = monitorOrigin.events.RollbackMessage;
-//       console.log(`\n> Filtering RollbackMessage event on source:`);
-//       console.log(rollbackMsgEvents);
-
-//       // execute rollback transaction
-//       const txExecuteRollback = await callDappContractMethod(
-//         "executeRollback",
-//         contract.lisbon["xcall-multi"],
-//         ICON_WALLET,
-//         nid.lisbon,
-//         ICON_SERVICE,
-//         {
-//           _sn: snFromSource
-//         },
-//         false
-//       );
-//       console.log(`\n> Sending transaction to executeRollback:`);
-//       console.log(txExecuteRollback);
-
-//       // wait tx result
-//       const txResultExecuteRollback = await getTxResult(
-//         txExecuteRollback,
-//         ICON_SERVICE
-//       );
-//       console.log(`\n> Sending transaction to executeRollback. Tx result:`);
-//       console.log(txResultExecuteRollback);
-//       console.log(JSON.stringify(txResultExecuteRollback));
-
-//       // filter RollbackExecuted event
-//       await monitorOrigin.waitForEvents("RollbackExecuted", snFromSource);
-//       const rollbackExecutedEvents = monitorOrigin.events.RollbackExecuted;
-//       console.log(`\n> Filtering RollbackExecuted event on source:`);
-//       console.log(rollbackExecutedEvents);
-//     } else {
-//       console.log("\n> Bypassing rollback transaction");
-//     }
-
-//     // close monitors
-//     monitor.close();
-//     monitorOrigin.close();
-//   } catch (e) {
-//     console.log("error running tests", e);
-//   }
-// }
 
 export default helloWorldDemoJVMJVM;
