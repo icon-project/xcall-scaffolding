@@ -14,7 +14,7 @@ public class HelloWorld {
     private final VarDB<String> destinationAddress = Context.newVarDB("btpAddress", String.class);
     private final VarDB<Address> xcallContractAddress = Context.newVarDB("xcall", Address.class);
 
-    private static final String ROLLBACK = "ExecuteRollback";
+    private static final String ROLLBACK = "executeRollback";
 
     private final VarDB<String> rollback = Context.newVarDB("rollback", String.class);
 
@@ -49,18 +49,16 @@ public class HelloWorld {
         Address caller = Context.getCaller();
         String payload = new String(_data);
         Address xcallSourceAddress = this.xcallContractAddress.get();
+        String rollbackAddress = Context.call(String.class, xcallSourceAddress, "getNetworkAddress");
         Context.println("handleCallMessage payload:" + payload);
-        // If the caller is the xcall contract, then update the local count
+        
         if (caller.equals(xcallSourceAddress)) {
-            Context.println("Message received");
-            // The following event is raised to notify that a message has been received
-           MessageReceived(_from, _data);
-           if (payload.equals(this.rollback.get())) {
-                // Setup any required logic to handle the rollback here
-               Context.println("Rollback message received");
-                // The following event is raised to notify that a rollback message has been received
-                RollbackDataReceived(_from, _data);
-           }
+            if (rollbackAddress.equals(_from)) {
+                return;
+            } else {
+                Context.require(!new String(_data).equals(this.rollback.get()), "Failed!");
+                MessageReceived(_from, _data);
+            }
         } else {
             Context.revert("Unauthorized caller");
         }

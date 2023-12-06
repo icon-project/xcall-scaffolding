@@ -614,6 +614,10 @@ function filterRollbackExecutedEventJvm(eventlogs) {
   return filterEventJvm(eventlogs, "RollbackExecuted(int)");
 }
 
+function filterCallExecutedEventJvm(eventlogs, contract) {
+  return filterEventJvm(eventlogs, "CallExecuted(int,int,str)", contract);
+}
+
 function filterEventJvm(
   eventlogs,
   sig,
@@ -668,6 +672,7 @@ export default {
   encodeMessage,
   executeCallEvm,
   filterCallExecutedEventEvm,
+  filterCallExecutedEventJvm,
   filterCallMessageEventEvm,
   filterCallMessageSentEventJvm,
   filterRollbackExecutedEventJvm,
