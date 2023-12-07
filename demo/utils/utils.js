@@ -1,18 +1,7 @@
 const fs = require("fs");
 const IconService = require("icon-sdk-js");
 const { Web3 } = require("web3");
-const {
-  EVM_RPC,
-  JVM_RPC,
-  EVM_PRIVATE_KEY,
-  JVM_PRIVATE_KEY,
-  EVM_XCALL_ADDRESS,
-  JVM_XCALL_ADDRESS,
-  EVM_NETWORK_LABEL,
-  JVM_NETWORK_LABEL,
-  JVM_NID,
-  config
-} = require("./config");
+const { destinationChain, originChain, config } = require("./config");
 const customRequest = require("./customRequest");
 
 const {
@@ -28,16 +17,25 @@ const { EventMonitorSpec, EventFilter, BigNumber } = IconService;
 // validate config
 validateConfig();
 
-const HTTP_PROVIDER = new HttpProvider(JVM_RPC);
+const HTTP_PROVIDER = new HttpProvider(originChain.jvm.rpc);
 const JVM_SERVICE = new IconService.default(HTTP_PROVIDER);
-const JVM_WALLET = IconWallet.loadPrivateKey(JVM_PRIVATE_KEY);
+const JVM_WALLET = IconWallet.loadPrivateKey(originChain.jvm.privateKey);
 
-const EVM_SERVICE_WEB3 = new Web3(EVM_RPC);
+const EVM_SERVICE_WEB3 = new Web3(destinationChain.evm.rpc);
 const EVM_WALLET_WEB3 = EVM_SERVICE_WEB3.eth.accounts.privateKeyToAccount(
-  EVM_PRIVATE_KEY,
+  destinationChain.evm.privateKey,
   true
 );
 EVM_SERVICE_WEB3.eth.accounts.wallet.add(EVM_WALLET_WEB3);
+
+function customJvmService(rpc) {
+  const httpProvider = new HttpProvider(rpc);
+  return new IconService.default(httpProvider);
+}
+
+function customJvmWallet(privateKey) {
+  return IconWallet.loadPrivateKey(privateKey);
+}
 
 /*
  *
@@ -57,7 +55,7 @@ function contractEventMonitor(height, sig, contract) {
   // const onProgress = data => {
   //   console.log("Progress", data);
   // };
-  // const url = "ws://" + JVM_RPC.replace("http://", "").replace("https://", "");
+  // const url = "ws://" + originChain.jvm.rpc.replace("http://", "").replace("https://", "");
   // console.log("url", url);
   // return new Monitor(url, spec, onData, onError, onProgress);
 }
@@ -79,7 +77,7 @@ async function fetchEventsFromTracker(network = "berlin") {
     }
 
     const response = await customRequest(
-      `${config.tracker.logs}${JVM_XCALL_ADDRESS}`,
+      `${config.tracker.logs}${originChain.jvm.xcallAddress}`,
       false,
       url
     );
@@ -111,14 +109,18 @@ async function getBlockJvm(label) {
 
 /*
  */
-async function getTxResult(txHash) {
+async function getTxResult(txHash, jvmService = JVM_SERVICE, spinner = null) {
   const maxLoops = 10;
   let loop = 0;
+  const spinnerInitText = spinner != null ? spinner.suffixText : null;
   while (loop < maxLoops) {
     try {
-      return await JVM_SERVICE.getTransactionResult(txHash).execute();
+      return await jvmService.getTransactionResult(txHash).execute();
     } catch (e) {
-      // console.log(`txResult (pass ${loop}): ${e.message}`);
+      if (spinner != null) {
+        spinner.suffixText = `${spinnerInitText}. txResult (pass ${loop}): ${e}`;
+      }
+      // console.log(`txResult (pass ${loop}): ${e}`);
       loop++;
       await sleep(1000);
     }
@@ -128,23 +130,29 @@ async function getTxResult(txHash) {
 /*
  * deployJvmContract
  */
-async function deployJvmContract(compiledContractPath) {
+async function deployJvmContract(
+  compiledContractPath,
+  jvmService = JVM_SERVICE,
+  jvmWallet = JVM_WALLET,
+  nid = originChain.jvm.nid
+) {
   try {
+    console.log(jvmWallet.getAddress());
     const content = getJvmContractBytecode(compiledContractPath);
     const payload = new IconBuilder.DeployTransactionBuilder()
       .contentType("application/java")
       .content(`0x${content}`)
       // .params(params)
-      .from(JVM_WALLET.getAddress())
+      .from(jvmWallet.getAddress())
       .to(config.icon.contract.chain)
-      .nid(JVM_NID)
+      .nid(nid)
       .version(3)
       .timestamp(new Date().getTime() * 1000)
       .stepLimit(IconConverter.toBigNumber(10000000000))
       .build();
 
-    const signedTx = new SignedTransaction(payload, JVM_WALLET);
-    return await JVM_SERVICE.sendTransaction(signedTx).execute();
+    const signedTx = new SignedTransaction(payload, jvmWallet);
+    return await jvmService.sendTransaction(signedTx).execute();
   } catch (e) {
     console.log(`Error deploying contract: ${compiledContractPath}`);
     console.log(e);
@@ -281,91 +289,93 @@ function validateConfig(bypass = false) {
     console.log(">>>>>> Validating configurations");
     // verify private key for EVM chain
     if (
-      EVM_PRIVATE_KEY == null ||
-      (typeof EVM_PRIVATE_KEY !== "string" &&
-        EVM_PRIVATE_KEY.slice(0, 2) !== "0x")
+      destinationChain.evm.privateKey == null ||
+      (typeof destinationChain.evm.privateKey !== "string" &&
+        destinationChain.evm.privateKey.slice(0, 2) !== "0x")
     ) {
-      throw new Error("EVM_PRIVATE_KEY not set");
+      throw new Error("EVM_DESTINATION_WALLET_PK not set");
     } else {
-      console.log(`> EVM_PRIVATE_KEY validated`);
+      console.log(`> EVM_DESTINATION_WALLET_PK validated`);
     }
 
     // verify private key for JVM chain
-    if (JVM_PRIVATE_KEY == null) {
-      throw new Error("JVM_PRIVATE_KEY not set");
+    if (originChain.jvm.privateKey == null) {
+      throw new Error("JVM_ORIGIN_WALLET_PK not set");
     } else {
-      console.log("> JVM_PRIVATE_KEY validated");
+      console.log("> JVM_ORIGIN_WALLET_PK validated");
     }
 
     // verify rpc endpoints
-    if (EVM_RPC == null) {
-      throw new Error("EVM_RPC not set");
+    if (destinationChain.evm.rpc == null) {
+      throw new Error("EVM_DESTINATION_RPC not set");
     } else {
-      console.log(`> EVM_RPC validated. ${EVM_RPC}`);
+      console.log(
+        `> EVM_DESTINATION_RPC validated. ${destinationChain.evm.rpc}`
+      );
     }
-    if (JVM_RPC == null) {
-      throw new Error("JVM_RPC not set");
+    if (originChain.jvm.rpc == null) {
+      throw new Error("JVM_ORIGIN_RPC not set");
     } else {
-      console.log(`> JVM_RPC validated. ${JVM_RPC}`);
+      console.log(`> JVM_ORIGIN_RPC validated. ${originChain.jvm.rpc}`);
     }
 
     // verify xCall address on EVM Chain
     if (
-      EVM_XCALL_ADDRESS == null ||
-      EVM_XCALL_ADDRESS == "" ||
-      isValidEVMContract(EVM_XCALL_ADDRESS) == false
+      destinationChain.evm.xcallAddress == null ||
+      destinationChain.evm.xcallAddress == "" ||
+      isValidEVMContract(destinationChain.evm.xcallAddress) == false
     ) {
       console.error(
-        `> Invalid EVM_XCALL_ADDRESS: ${EVM_XCALL_ADDRESS}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+        `> Invalid EVM_DESTINATION_XCALL_ADDRESS: ${destinationChain.evm.xcallAddress}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
       );
     } else {
-      console.log("> EVM_XCALL_ADDRESS validated");
+      console.log("> EVM_DESTINATION_XCALL_ADDRESS validated");
     }
 
     // verify xCall address on JVM Chain
     if (
-      JVM_XCALL_ADDRESS == null ||
-      JVM_XCALL_ADDRESS == "" ||
-      isValidJVMContract(JVM_XCALL_ADDRESS) == false
+      originChain.jvm.xcallAddress == null ||
+      originChain.jvm.xcallAddress == "" ||
+      isValidJVMContract(originChain.jvm.xcallAddress) == false
     ) {
       console.error(
-        `> Invalid JVM_XCALL_ADDRESS: ${JVM_XCALL_ADDRESS}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+        `> Invalid JVM_ORIGIN_XCALL_ADDRESS: ${originChain.jvm.xcallAddress}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
       );
     } else {
-      console.log("> JVM_XCALL_ADDRESS validated");
+      console.log("> JVM_ORIGIN_XCALL_ADDRESS validated");
     }
 
     // verify JVM network label
     if (
-      JVM_NETWORK_LABEL == null ||
-      JVM_NETWORK_LABEL == "" ||
-      isValidBTPNetworkLabel(JVM_NETWORK_LABEL) == false
+      originChain.jvm.networkLabel == null ||
+      originChain.jvm.networkLabel == "" ||
+      isValidNetworkLabel(originChain.jvm.networkLabel) == false
     ) {
       console.error(
-        `> Invalid JVM_NETWORK_LABEL: ${JVM_NETWORK_LABEL}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+        `> Invalid JVM_ORIGIN_NETWORK_LABEL: ${originChain.jvm.networkLabel}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
       );
     } else {
-      console.log("> JVM_NETWORK_LABEL validated");
+      console.log("> JVM_ORIGIN_NETWORK_LABEL validated");
     }
 
     // verify EVM network label
     if (
-      EVM_NETWORK_LABEL == null ||
-      EVM_NETWORK_LABEL == "" ||
-      isValidBTPNetworkLabel(EVM_NETWORK_LABEL) == false
+      destinationChain.evm.networkLabel == null ||
+      destinationChain.evm.networkLabel == "" ||
+      isValidNetworkLabel(destinationChain.evm.networkLabel) == false
     ) {
       console.error(
-        `> Invalid EVM_NETWORK_LABEL: ${EVM_NETWORK_LABEL}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
+        `> Invalid EVM_DESTINATION_NETWORK_LABEL: ${destinationChain.evm.networkLabel}.\n> Contract deployment of dApps will success but running e2e tests will fail.`
       );
     } else {
-      console.log("> EVM_NETWORK_LABEL validated");
+      console.log("> EVM_DESTINATION_NETWORK_LABEL validated");
     }
 
     // verify JVM nid
-    if (JVM_NID == null || JVM_NID == "") {
-      throw new Error("JVM_NID not set");
+    if (originChain.jvm.nid == null || originChain.jvm.nid == "") {
+      throw new Error("JVM_ORIGIN_NID not set");
     } else {
-      console.log("> JVM_NID validated");
+      console.log("> JVM_ORIGIN_NID validated");
     }
     // verify contracts are built
     // const contractsAreBuilt = verifyContractsBuild();
@@ -409,6 +419,18 @@ function getDeployments() {
   }
 }
 
+function validateDeployments(deployments) {
+  if (deployments == null) {
+    throw new Error("Deployments not found");
+  }
+  if (deployments.evm == null) {
+    throw new Error("EVM deployments not found");
+  }
+  if (deployments.jvm == null) {
+    throw new Error("JVM deployments not found");
+  }
+}
+
 function isValidJVMContract(address) {
   return isValidHexAddress(address, "c");
 }
@@ -425,9 +447,59 @@ function isValidHexAddress(address, stringStartsWith, length = 42) {
   );
 }
 
-function isValidBTPNetworkLabel(label) {
+function isValidNetworkLabel(label) {
   const [nid, chain] = label.split(".");
   return nid != null && chain != null && nid !== "" && chain !== "";
+}
+
+function validateJvmConfig(config) {
+  if (config.rpc == null || config.rpc == "") {
+    console.log("> JVM_RPC not set");
+    return false;
+  }
+  if (config.privateKey == null || config.privateKey == "") {
+    console.log("> JVM_WALLET_PK not set");
+    return false;
+  }
+  if (config.nid == null || config.nid == "") {
+    console.log("> JVM_NID not set");
+    return false;
+  }
+  if (config.networkLabel == null || config.networkLabel == "") {
+    console.log("> JVM_NETWORK_LABEL not set");
+    return false;
+  }
+  if (config.xcallAddress == null || config.xcallAddress == "") {
+    console.log("> JVM_XCALL_ADDRESS not set");
+    return false;
+  }
+
+  return true;
+}
+
+function validateEvmConfig(config) {
+  if (config.rpc == null || config.rpc == "") {
+    console.log("> EVM_RPC not set");
+    return false;
+  }
+  if (config.privateKey == null || config.privateKey == "") {
+    console.log("> EVM_WALLET_PK not set");
+    return false;
+  }
+  if (config.networkLabel == null || config.networkLabel == "") {
+    console.log("> EVM_NETWORK_LABEL not set");
+    return false;
+  }
+  if (config.xcallAddress == null || config.xcallAddress == "") {
+    console.log("> EVM_XCALL_ADDRESS not set");
+    return false;
+  }
+
+  return true;
+}
+
+function validateCosmwasmConfig(config) {
+  // todo
 }
 
 module.exports = {
@@ -452,5 +524,10 @@ module.exports = {
   EVM_WALLET_WEB3,
   IconBuilder,
   IconConverter,
-  SignedTransaction
+  SignedTransaction,
+  validateJvmConfig,
+  validateEvmConfig,
+  validateDeployments,
+  customJvmService,
+  customJvmWallet
 };

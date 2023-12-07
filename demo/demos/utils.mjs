@@ -2,16 +2,7 @@ import { Web3 } from "web3";
 import { ethers } from "ethers";
 import utilIndex from "../utils/index.mjs";
 const { config, utils } = utilIndex;
-const {
-  EVM_RPC,
-  EVM_PRIVATE_KEY,
-  EVM_XCALL_ADDRESS,
-  JVM_XCALL_ADDRESS,
-  // JVM_NETWORK_LABEL,
-  EVM_NETWORK_LABEL,
-  JVM_NID,
-  xcallAbi
-} = config;
+const { destinationChain, originChain, xcallAbi } = config;
 const {
   isValidHexAddress,
   sleep,
@@ -29,9 +20,11 @@ const {
 
 const web3Utils = Web3.utils;
 const { CallTransactionBuilder, CallBuilder } = IconBuilder;
-const EVM_PROVIDER_ETHERS = new ethers.providers.JsonRpcProvider(EVM_RPC);
+const EVM_PROVIDER_ETHERS = new ethers.providers.JsonRpcProvider(
+  destinationChain.evm.rpc
+);
 const EVM_SIGNER_ETHERS = new ethers.Wallet(
-  EVM_PRIVATE_KEY,
+  destinationChain.evm.privateKey,
   EVM_PROVIDER_ETHERS
 );
 
@@ -47,7 +40,7 @@ function getContractObjectEvm(abi, address) {
 
 function getXcallContractObject() {
   try {
-    return getContractObjectEvm(xcallAbi, EVM_XCALL_ADDRESS);
+    return getContractObjectEvm(xcallAbi, destinationChain.evm.xcallAddress);
   } catch (e) {
     console.log("Error getting xcall contract object: ", e);
     throw new Error("Error getting xcall contract object");
@@ -87,7 +80,8 @@ function filterCallExecutedEventEvm(msgId) {
 async function waitCallMessageEventEvm(
   eventFilter,
   spinner,
-  maxMinutesToWait = 20
+  maxMinutesToWait = 20,
+  waitTimeBetweenRetries = 1000
 ) {
   try {
     const xCallContract = getXcallContractObject();
@@ -95,7 +89,8 @@ async function waitCallMessageEventEvm(
       xCallContract,
       eventFilter,
       spinner,
-      maxMinutesToWait
+      maxMinutesToWait,
+      waitTimeBetweenRetries
     );
   } catch (e) {
     console.log("Error waiting for CallMessage event: ", e);
@@ -126,18 +121,22 @@ async function waitEventEvm(
   contract,
   eventFilter,
   spinner = null,
-  maxMinutesToWait = 20
+  maxMinutesToWait = 20,
+  waitTimeBetweenRetries = 1000
 ) {
-  let height = (await contract.provider.getBlockNumber()) - 5;
+  const initBlock = await contract.provider.getBlockNumber();
+  let height = initBlock - 5;
   let next = height + 1;
   const maxSecondsToWait = maxMinutesToWait * 60;
   let secondsWaited = 0;
-  while (secondsWaited < maxSecondsToWait) {
+  let breakLoop = false;
+  while (secondsWaited < maxSecondsToWait && !breakLoop) {
     try {
+      await sleep(waitTimeBetweenRetries);
+      secondsWaited++;
       if (height == next) {
-        await sleep(1000);
-        secondsWaited++;
-        next = (await contract.provider.getBlockNumber()) + 1;
+        const latestBlock = await contract.provider.getBlockNumber();
+        next = latestBlock + 1;
         continue;
       }
       for (; height < next; height++) {
@@ -151,10 +150,76 @@ async function waitEventEvm(
       }
     } catch (err) {
       spinner.suffixText = `\n   -- Error waiting for event on EVM Chain: ${err.message}`;
+      const errMsg = JSON.stringify({
+        msg: err.body,
+        requestBody: err.requestBody
+      });
+      const parsedErrMsg = recursivelyParseJSON(errMsg);
+      if (
+        parsedErrMsg != null &&
+        parsedErrMsg.msg != null &&
+        parsedErrMsg.msg.error != null
+      ) {
+        if (parsedErrMsg.msg.error.message != null) {
+          if (parsedErrMsg.msg.error.message === "limit exceeded") {
+            spinner.suffixText = `\n   -- Response error => rate limit exceeded. ${JSON.stringify(
+              parsedErrMsg
+            )}`;
+            breakLoop = true;
+          }
+        }
+      }
     }
   }
   return null;
   // throw new Error("Timeout waiting for event on EVM Chain");
+}
+
+function recursivelyParseJSON(str) {
+  try {
+    return recursivelyParseJSONHelper(JSON.parse(str));
+  } catch (err) {
+    `Unexpected error running recursivelyParseJSON. input => ${str}`;
+  }
+}
+
+function recursivelyParseJSONHelper(obj) {
+  try {
+    const mainObject = { ...obj };
+    for (const key in mainObject) {
+      if (typeof mainObject[key] === "string") {
+        let parsedValue;
+        try {
+          // try to parse the string
+          parsedValue = JSON.parse(mainObject[key]);
+        } catch (innerErr) {
+          // if the parsing fails assume is a regular string
+          parsedValue = mainObject[key];
+        }
+        // replace the original string with the parsed or unparsed
+        // value
+        mainObject[key] = parsedValue;
+
+        // if the value is an object, recursively parse it
+        if (typeof mainObject[key] === "object") {
+          // recursively parse the object
+          mainObject[key] = recursivelyParseJSONHelper(mainObject[key]);
+        }
+      } else if (
+        typeof mainObject[key] === "object" &&
+        mainObject[key] != null
+      ) {
+        // recursively parse the object
+        mainObject[key] = recursivelyParseJSONHelper(mainObject[key]);
+      }
+    }
+
+    return mainObject;
+  } catch (err) {
+    throw new Error(
+      `Unexpected error running recursivelyParseJSONHelper. input => ${str}`
+    );
+  }
 }
 
 async function executeCallEvm(id, data) {
@@ -356,15 +421,15 @@ function responseMessageEventListener(height) {
   return contractEventMonitor(
     height,
     "ResponseMessage(int,int)",
-    JVM_XCALL_ADDRESS
+    originChain.jvm.xcallAddress
   );
 }
 async function waitResponseMessageEventJvm(id) {
   try {
     const sig = "ResponseMessage(int,int,str)";
-    return await eventListenerJvm(sig, JVM_XCALL_ADDRESS, id);
-    // return await waitEventJvm(sig, JVM_XCALL_ADDRESS, id);
-    // return await waitEventFromTrackerJvm(sig, JVM_XCALL_ADDRESS, id);
+    return await eventListenerJvm(sig, originChain.jvm.xcallAddress, id);
+    // return await waitEventJvm(sig, originChain.jvm.xcallAddress, id);
+    // return await waitEventFromTrackerJvm(sig, originChain.jvm.xcallAddress, id);
   } catch (e) {
     console.log("Error waiting for ResponseMessage event: ", e.message);
     throw new Error("Error waiting for ResponseMessage event");
@@ -374,17 +439,17 @@ async function waitResponseMessageEventJvm(id) {
 async function waitRollbackExecutedEventJvm(id) {
   try {
     const sig = "RollbackExecuted(int)";
-    return await waitEventFromTrackerJvm(sig, JVM_XCALL_ADDRESS, id);
+    return await waitEventFromTrackerJvm(sig, originChain.jvm.xcallAddress, id);
   } catch (e) {
-    console.log("Error waiting for ResponseMessage event: ", e.message);
-    throw new Error("Error waiting for ResponseMessage event");
+    console.log("Error waiting for RollbackExecuted event: ", e.message);
+    throw new Error("Error waiting for RollbackExecuted event");
   }
 }
 
 async function getXcallJvmFee(
   network,
   useRollback = true,
-  contract = JVM_XCALL_ADDRESS,
+  contract = originChain.jvm.xcallAddress,
   service = JVM_SERVICE
 ) {
   try {
@@ -413,7 +478,7 @@ async function invokeJvmContractMethod(
   method,
   contract,
   wallet = JVM_WALLET,
-  nid = JVM_NID,
+  nid = originChain.jvm.nid,
   service = JVM_SERVICE,
   params = null,
   value = null
@@ -457,12 +522,12 @@ async function invokeJvmContractMethod(
 async function initializeJvmContract(
   dappContract,
   params,
-  destinationNetworkLabel = EVM_NETWORK_LABEL,
+  destinationNetworkLabel = destinationChain.evm.networkLabel,
   rollback = true,
-  contract = JVM_XCALL_ADDRESS,
+  contract = originChain.jvm.xcallAddress,
   service = JVM_SERVICE,
   wallet = JVM_WALLET,
-  nid = JVM_NID
+  nid = originChain.jvm.nid
 ) {
   try {
     const fee = await getXcallJvmFee(
@@ -497,11 +562,11 @@ async function invokeJvmDAppMethod(
   method,
   params,
   rollback = true,
-  destinationNetworkLabel = EVM_NETWORK_LABEL,
-  jvmXCallContract = JVM_XCALL_ADDRESS,
+  destinationNetworkLabel = destinationChain.evm.networkLabel,
+  jvmXCallContract = originChain.jvm.xcallAddress,
   service = JVM_SERVICE,
   wallet = JVM_WALLET,
-  nid = JVM_NID
+  nid = originChain.jvm.nid
 ) {
   try {
     const fee = await getXcallJvmFee(
@@ -550,7 +615,11 @@ function filterRollbackExecutedEventJvm(eventlogs) {
   return filterEventJvm(eventlogs, "RollbackExecuted(int)");
 }
 
-function filterEventJvm(eventlogs, sig, address = JVM_XCALL_ADDRESS) {
+function filterEventJvm(
+  eventlogs,
+  sig,
+  address = originChain.jvm.xcallAddress
+) {
   const result = eventlogs.filter(event => {
     return (
       event.indexed &&
@@ -603,5 +672,6 @@ export default {
   waitRollbackExecutedEventJvm,
   getBlockJvm,
   parseEvmEventsFromBlock,
-  filterRollbackExecutedEventJvm
+  filterRollbackExecutedEventJvm,
+  recursivelyParseJSON
 };

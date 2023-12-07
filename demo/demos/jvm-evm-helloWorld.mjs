@@ -29,38 +29,33 @@ const {
   // waitRollbackExecutedEventJvm
 } = miscUtils;
 
-const {
-  JVM_XCALL_ADDRESS,
-  EVM_XCALL_ADDRESS,
-  EVM_NETWORK_LABEL,
-  JVM_NETWORK_LABEL,
-  JVM_RPC,
-  EVM_RPC,
-  JVM_PRIVATE_KEY,
-  EVM_PRIVATE_KEY,
-  JVM_NID
-} = config;
+const { originChain, destinationChain } = config;
 
 const { getTxResult, isValidHexAddress, sleep } = utils;
 const { HttpProvider, IconWallet } = IconService;
 
-const HTTP_PROVIDER = new HttpProvider(JVM_RPC);
+const HTTP_PROVIDER = new HttpProvider(originChain.jvm.rpc);
 const JVM_SERVICE = new IconService(HTTP_PROVIDER);
-const JVM_WALLET = IconWallet.loadPrivateKey(JVM_PRIVATE_KEY);
+const JVM_WALLET = IconWallet.loadPrivateKey(originChain.jvm.privateKey);
 
-const EVM_SERVICE_WEB3 = new Web3(EVM_RPC);
+const EVM_SERVICE_WEB3 = new Web3(destinationChain.evm.rpc);
 const EVM_WALLET_WEB3 = EVM_SERVICE_WEB3.eth.accounts.privateKeyToAccount(
-  EVM_PRIVATE_KEY,
+  destinationChain.evm.privateKey,
   true
 );
 EVM_SERVICE_WEB3.eth.accounts.wallet.add(EVM_WALLET_WEB3);
 
 async function helloWorldDemo(deployments) {
-  // start monitor
+  const dappOriginContractAddress =
+    deployments.HelloWorld[originChain.jvm.networkLabel].contract;
+  const dappDestinationContractAddress =
+    deployments.HelloWorld[destinationChain.evm.networkLabel].contract;
+  const dappDestinationContractAbi =
+    deployments.HelloWorld[destinationChain.evm.networkLabel].evmAbi;
   const monitor = new Monitor(
     JVM_SERVICE,
-    JVM_XCALL_ADDRESS,
-    deployments.HelloWorld.jvm
+    originChain.jvm.xcallAddress,
+    dappOriginContractAddress
   );
   monitor.start();
 
@@ -71,13 +66,13 @@ async function helloWorldDemo(deployments) {
     );
     // get Network addresses
     const evmDappNetworkAddress = getNetworkAddress(
-      EVM_NETWORK_LABEL,
-      deployments.HelloWorld.evm
+      destinationChain.evm.networkLabel,
+      dappDestinationContractAddress
     );
 
     const jvmDappNetworkAddress = getNetworkAddress(
-      JVM_NETWORK_LABEL,
-      deployments.HelloWorld.jvm
+      originChain.jvm.networkLabel,
+      dappOriginContractAddress
     );
 
     // initialize JVM contract and test results
@@ -88,17 +83,17 @@ async function helloWorldDemo(deployments) {
     }).start();
 
     const request1 = await initializeJvmContract(
-      deployments.HelloWorld.jvm,
+      dappOriginContractAddress,
       {
-        _sourceXCallContract: JVM_XCALL_ADDRESS,
+        _sourceXCallContract: originChain.jvm.xcallAddress,
         _destinationAddress: evmDappNetworkAddress
       },
-      EVM_NETWORK_LABEL,
+      destinationChain.evm.networkLabel,
       true,
-      JVM_XCALL_ADDRESS,
+      originChain.jvm.xcallAddress,
       JVM_SERVICE,
       JVM_WALLET,
-      JVM_NID
+      originChain.jvm.nid
     );
 
     if (request1.txHash == null) {
@@ -123,7 +118,7 @@ async function helloWorldDemo(deployments) {
       spinner: process.argv[2]
     }).start();
 
-    const txResult1 = await getTxResult(request1.txHash);
+    const txResult1 = await getTxResult(request1.txHash, JVM_SERVICE, spinner2);
 
     if (txResult1 == null || txResult1.status == 0) {
       spinner2.suffixText =
@@ -148,9 +143,9 @@ async function helloWorldDemo(deployments) {
     }).start();
 
     const request2 = await initializeEvmContract(
-      deployments.HelloWorld.evm,
-      deployments.HelloWorld.evmAbi,
-      EVM_XCALL_ADDRESS,
+      dappDestinationContractAddress,
+      dappDestinationContractAbi,
+      destinationChain.evm.xcallAddress,
       jvmDappNetworkAddress
     );
 
@@ -189,7 +184,7 @@ async function helloWorldDemo(deployments) {
     }).start();
 
     const request3 = await invokeJvmDAppMethod(
-      deployments.HelloWorld.jvm,
+      dappOriginContractAddress,
       "sendMessage",
       requestParams
     );
@@ -261,11 +256,12 @@ async function helloWorldDemo(deployments) {
     const parsedEventlog1 = parseCallMessageSentEventJvm(eventlog1);
     const eventlog2 = filterCallMessageEventEvm(
       jvmDappNetworkAddress,
-      deployments.HelloWorld.evm,
+      dappDestinationContractAddress,
       parsedEventlog1._sn
     );
     if (eventlog2 == null) {
-      spinner7.suffixText = chalk.red("FAILURE") + ".\n";
+      const prevMsg = spinner7.suffixText;
+      spinner7.suffixText = chalk.red("FAILURE") + ".\n" + prevMsg;
       spinner7.fail();
       monitor.close();
       return;
@@ -283,12 +279,10 @@ async function helloWorldDemo(deployments) {
       spinner: process.argv[2]
     }).start();
 
-    const event2 = await waitCallMessageEventEvm(eventlog2, spinner8);
+    const event2 = await waitCallMessageEventEvm(eventlog2, spinner8, 20, 5000);
     if (event2 == null) {
-      spinner8.suffixText =
-        chalk.red(
-          "FAILURE. Critical error, 'waitCallMessageEventEvm' returned 'null'"
-        ) + ".\n";
+      const prevMsg = spinner8.suffixText;
+      spinner8.suffixText = chalk.red("FAILURE") + ".\n" + prevMsg;
       spinner8.fail();
       monitor.close();
       return;
@@ -313,6 +307,7 @@ async function helloWorldDemo(deployments) {
       suffixText: `${chalk.yellow("Pending")}.`,
       spinner: process.argv[2]
     }).start();
+
     const request4 = await executeCallEvm(reqId, data);
     if (request4.txHash == null) {
       spinner9.suffixText =
@@ -474,9 +469,9 @@ async function helloWorldDemo(deployments) {
 
       const request5 = await invokeJvmContractMethod(
         "executeRollback",
-        JVM_XCALL_ADDRESS,
+        originChain.jvm.xcallAddress,
         JVM_WALLET,
-        JVM_NID,
+        originChain.jvm.nid,
         JVM_SERVICE,
         {
           _sn: parsedEventlog1._sn
