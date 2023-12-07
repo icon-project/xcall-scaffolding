@@ -173,7 +173,7 @@ class Monitor {
         return await this.jvmService.getBlockByHeight(label).execute();
       }
     } catch (err) {
-      console.log("\nError getting block on JVM chain:");
+      console.log("\n> Block monitor: Error getting block on JVM chain:");
       console.log(err);
       // throw new Error("Error getting block on JVM chain");
     }

@@ -34,10 +34,10 @@ async function main() {
     const contractPaths = getContractPaths();
 
     // deployments
-    const result = {};
+    const result = { ...localDeployments };
 
     for (const dapp in contractPaths) {
-      result[dapp] = {};
+      // result[dapp] = {};
       for (const eachChain in chains) {
         const chain = chains[eachChain];
 
@@ -85,7 +85,8 @@ async function main() {
           result[dapp][chain.evm.networkLabel] = { contract: null, abi: null };
           if (
             localDeployments[dapp] != null &&
-            localDeployments[dapp][chain.evm.networkLabel] != null
+            localDeployments[dapp][chain.evm.networkLabel] != null &&
+            localDeployments[dapp][chain.evm.networkLabel].contract != null
           ) {
             console.log(
               `> Contract for dApp ${dapp} on chain ${chain.evm.networkLabel} already deployed`
