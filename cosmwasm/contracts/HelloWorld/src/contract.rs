@@ -15,7 +15,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, XCallQueryMsg};
 use crate::state::XCALL_ADDRESS;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:hello-world";
+const CONTRACT_NAME: &str = "crates.io:HelloWorld";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

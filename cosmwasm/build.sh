@@ -9,7 +9,7 @@ RUSTC_VERS="1.69.0"
 
 MAX_WASM_SIZE=800 # 800 KB
 
-PROJECTS=("hello-world")
+PROJECTS=("HelloWorld")
 
 # Install wasm-opt binary
 if ! which wasm-opt; then
@@ -47,7 +47,7 @@ done
 
 # check all generated wasm files
 
-cosmwasm-check  artifacts/hello_world.wasm
+cosmwasm-check  artifacts/HelloWorld.wasm
 
 
 # validate size
