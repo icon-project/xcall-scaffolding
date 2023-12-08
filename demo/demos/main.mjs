@@ -3,7 +3,7 @@ const { utils } = utilIndex;
 const { getDeployments } = utils;
 import helloWorldDemoJVMEVM from "./jvm-evm-helloWorld.mjs";
 import helloWorldDemoJVMJVM from "./jvm-jvm-helloWorld.mjs";
-// const { votingDappE2E } = require("./e2e-votingDapp");
+impor helloWorldDemoJVMCOSMWASM from "./jvm-cosmwasm-helloWorld.mjs";
 const singleTest = process.env.SINGLE_TEST;
 const testType = process.env.TYPE;
 
@@ -17,8 +17,23 @@ async function main() {
       );
       return;
     }
-    const helloWorldDemo =
-      testType === "jvm-evm" ? helloWorldDemoJVMEVM : helloWorldDemoJVMJVM;
+    // let helloWorldDemo =
+    //   testType === "jvm-evm" ? helloWorldDemoJVMEVM : helloWorldDemoJVMJVM;
+    let helloWorldDemo = "";
+    switch (testType) {
+      case "jvm-evm":
+        helloWorldDemo = helloWorldDemoJVMEVM;
+        break;
+      case "jvm-jvm":
+        helloWorldDemo = helloWorldDemoJVMJVM;
+        break;
+      case "jvm-cosmwasm":
+        helloWorldDemo = helloWorldDemoJVMCOSMWASM;
+        break;
+      default:
+        helloWorldDemo = helloWorldDemoJVMEVM;
+    }
+
     console.log("\n>>>>>> Running xCall demos");
     switch (singleTest) {
       case "helloWorldDemo":

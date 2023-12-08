@@ -34,24 +34,6 @@ const JVM_WALLET_DESTINATION = IconWallet.loadPrivateKey(
   destinationChain.jvm.privateKey
 );
 
-// const {
-//   rpc,
-//   contract,
-//   nid,
-//   network,
-//   PK_HAVAH,
-//   PK_ICON,
-//   dappSimple
-// } = require("../utils/config");
-
-//const {
-//  //
-//  getTxResult,
-//  parseCallMessageEvent,
-//  callDappContractMethod,
-//  filterCallExecutedEvent
-//} = require("../utils/lib");
-
 async function helloWorldDemoJVMJVM(deployments) {
   const dappOriginContractAddress =
     deployments.HelloWorld[originChain.jvm.networkLabel].contract;

@@ -15,8 +15,7 @@
     "demo-testnet": "NODE_ENV=node demos/main.mjs",
     "demo-jvm-evm": "TYPE=jvm-evm SINGLE_TEST=helloWorldDemo node demos/main.mjs",
     "demo-jvm-jvm": "TYPE=jvm-jvm SINGLE_TEST=helloWorldDemo node demos/main.mjs",
-    "demo-testnet-helloWorld": "NODE_ENV=testnet SINGLE_TEST=helloWorldDemo node demos/main.mjs",
-    "demo-testnet-votingDapp": "NODE_ENV=testnet SINGLE_TEST=votingDappDemo node demos/main.js"
+    "demo-jvm-cosmwasm": "TYPE=jvm-cosmwasm SINGLE_TEST=helloWorldDemo node demos/main.mjs"
   },
   "keywords": [],
   "author": "",
