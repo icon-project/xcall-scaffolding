@@ -3,7 +3,7 @@ const { utils } = utilIndex;
 const { getDeployments } = utils;
 import helloWorldDemoJVMEVM from "./jvm-evm-helloWorld.mjs";
 import helloWorldDemoJVMJVM from "./jvm-jvm-helloWorld.mjs";
-impor helloWorldDemoJVMCOSMWASM from "./jvm-cosmwasm-helloWorld.mjs";
+import helloWorldDemoJVMCOSMWASM from "./jvm-cosmwasm-helloWorld.mjs";
 const singleTest = process.env.SINGLE_TEST;
 const testType = process.env.TYPE;
 

@@ -1,7 +1,13 @@
 import ora from "ora";
 import process from "node:process";
-import { DirectSecp256k1Wallet } from "@cosmjs/proto-signing";
+import {
+  DirectSecp256k1Wallet,
+  decodeTxRaw,
+  Registry
+} from "@cosmjs/proto-signing";
 import { StargateClient } from "@cosmjs/stargate";
+import { sha256 } from "@cosmjs/crypto";
+import { toHex } from "@cosmjs/encoding";
 
 class CosmWasmMonitor {
   constructor(
@@ -21,16 +27,14 @@ class CosmWasmMonitor {
     this.timer = null;
     this.currentBlockHeight = null;
     this.events = {
-      RollbackExecuted: []
+      CallMessage: []
     };
     this.loopSpinner = ora({
       text: `> Waiting for events..`,
       spinner: process.argv[2]
     });
     this.startSpinner = startSpinner;
-    this.filterRollbackExecutedEvent = this.filterRollbackExecutedEvent.bind(
-      this
-    );
+    this.filterCallMessageEvent = this.filterCallMessageEvent.bind(this);
     this.spinnerStart = this.spinnerStart.bind(this);
   }
 
@@ -46,11 +50,13 @@ class CosmWasmMonitor {
   validateEvent(eventLabel, id) {
     for (const event of this.events[eventLabel]) {
       switch (eventLabel) {
-        case "ResponseMessage":
-          if (event.indexed[1] === id) {
-            this.spinnerSuccess();
-            return true;
-          }
+        case "CallMessage":
+          // console.log(event);
+          return true;
+          // if (event.indexed[1] === id) {
+          //   this.spinnerSuccess();
+          //   return true;
+          // }
           break;
         default:
           break;
@@ -143,21 +149,47 @@ class CosmWasmMonitor {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  filterEvent(eventlogs, sig, address = this.xcallAddress) {
-    const result = eventlogs.filter(event => {
-      return (
-        event.indexed &&
-        event.indexed[0] === sig &&
-        (!address || address === event.scoreAddress)
-      );
-    });
+  // filterEvent(eventlogs, sig, address = this.xcallAddress) {
+  //   const result = eventlogs.filter(event => {
+  //     return (
+  //       event.indexed &&
+  //       event.indexed[0] === sig &&
+  //       (!address || address === event.scoreAddress)
+  //     );
+  //   });
 
-    return result;
+  //   return result;
+  // }
+
+  async filterEvent(rawTx, signature) {
+    const txHash = toHex(sha256(Buffer.from(rawTx, "base64")));
+    // console.log(txHash);
+    const tx = await this.client.getTx(txHash);
+    // console.log(tx);
+    if (tx.events.length > 0) {
+      for (const event of tx.events) {
+        if (event.type === signature) {
+          // console.log("event");
+          // console.log(event);
+          // console.log(JSON.stringify(event.attributes));
+          return event;
+        }
+      }
+    }
   }
 
-  filterRollbackExecutedEvent(eventlog) {
-    const signature = "RollbackExecuted(int)";
-    return this.filterEvent(eventlog, signature);
+  async filterCallMessageEvent(rawTx) {
+    const eventFiltered = await this.filterEvent(rawTx, "wasm-CallMessage");
+    if (eventFiltered != null) {
+      this.events.CallMessage.push(eventFiltered);
+    }
+  }
+
+  async filterCallExecutedEvent(rawTx) {
+    const eventFilterd = await this.filterEvent(rawTx, "wasm-CallExecuted");
+    if (eventFiltered != null) {
+      this.events.CallMessage.push(eventFiltered);
+    }
   }
 
   spinnerStart() {
@@ -166,53 +198,71 @@ class CosmWasmMonitor {
   }
 
   async runLoop() {
-    this.timer = setTimeout(async () => {
-      if (this.startSpinner) {
-        this.loopSpinner.start();
-      }
-      if (this.running) {
-        const height =
-          this.currentBlockHeight !== null
-            ? this.currentBlockHeight
-            : this.initBlockHeight == null
-            ? null
-            : this.initBlockHeight;
-        setTimeout(() => {
-          this.loopSpinner.text = `> Waiting for events.. (block: ${
-            this.currentBlockHeight
-          }). Events => ${JSON.stringify(this.events)}`;
-        }, 2000);
-        if (height == null) {
-          const block = await this.getBlock(height);
-          console.log("\n> Block monitor: Block height: ");
-          console.log(block);
-          if (block != null) {
-            this.currentBlockHeight = block.header.height + 1;
-          } else {
-            await this.sleep(1000);
-          }
-        } else {
-          let chainHeight = null;
-          if (this.client != null) {
-            chainHeight = await this.client.getHeight();
-            if (height < chainHeight) {
-              const block = await this.getBlock(height);
-              console.log("\n> Block monitor: Block height: ");
-              console.log(block);
-              if (block != null) {
-                this.currentBlockHeight = block.header.height + 1;
-              } else {
-                await this.sleep(1000);
+    try {
+      this.timer = setTimeout(async () => {
+        if (this.startSpinner) {
+          this.loopSpinner.start();
+        }
+        if (this.running) {
+          const height =
+            this.currentBlockHeight !== null
+              ? this.currentBlockHeight
+              : this.initBlockHeight == null
+              ? null
+              : this.initBlockHeight;
+          setTimeout(() => {
+            this.loopSpinner.text = `> Waiting for events.. (block: ${
+              this.currentBlockHeight
+            }). Events => ${JSON.stringify(this.events)}`;
+          }, 2000);
+          if (height == null) {
+            const block = await this.getBlock(height);
+            // console.log("\n> Block monitor: Block height: ");
+            // console.log(block);
+            if (block != null) {
+              this.currentBlockHeight = block.header.height + 1;
+              // decode txs
+              if (block.txs.length > 0) {
+                for (const rawTx of block.txs) {
+                  this.filterCallMessageEvent(rawTx);
+                }
               }
             } else {
               await this.sleep(1000);
             }
+          } else {
+            let chainHeight = null;
+            if (this.client != null) {
+              chainHeight = await this.client.getHeight();
+              if (height < chainHeight) {
+                const block = await this.getBlock(height);
+                // console.log("\n> Block monitor: Block height: ");
+                // console.log(block);
+                if (block != null) {
+                  this.currentBlockHeight = block.header.height + 1;
+                  if (block.txs.length > 0) {
+                    for (const rawTx of block.txs) {
+                      this.filterCallMessageEvent(rawTx);
+                    }
+                  }
+                } else {
+                  await this.sleep(1000);
+                }
+              } else {
+                await this.sleep(1000);
+              }
+            }
           }
-        }
 
-        this.runLoop();
-      }
-    }, 1000); // Adjust the interval as needed
+          this.runLoop();
+        }
+      }, 1000); // Adjust the interval as needed
+    } catch (err) {
+      console.log("\n> Block monitor: Error running loop on COSMWASM chain:");
+      console.log(err);
+      console.log(err.message);
+      throw new Error();
+    }
   }
 
   async close() {

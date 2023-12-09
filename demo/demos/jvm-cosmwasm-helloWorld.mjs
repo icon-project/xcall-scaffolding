@@ -2,6 +2,7 @@
 import iconSdk from "icon-sdk-js";
 import utilIndex from "../utils/index.mjs";
 import Monitor from "../utils/monitor.mjs";
+import CosmWasmMonitor from "../utils/cosmwasm-monitor.mjs";
 import miscUtils from "./utils.mjs";
 import ora from "ora";
 import chalk from "chalk";
@@ -22,7 +23,8 @@ const {
   invokeJvmContractMethod,
   invokeJvmDAppMethod,
   parseCallMessageEventJvm,
-  parseCallMessageSentEventJvm
+  parseCallMessageSentEventJvm,
+  parseCallMessageEventCosmWasm
 } = miscUtils;
 const { originChain, destinationChain } = config;
 const { getTxResult } = utils;
@@ -43,6 +45,12 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
     originChain.jvm.xcallAddress,
     dappOriginContractAddress
   );
+
+  const monitorDestination = new CosmWasmMonitor(
+    destinationChain.cosmwasm.rpc,
+    destinationChain.cosmwasm.xcallAddress
+  );
+
   try {
     const COSMWASM_WALLET_DESTINATION = await DirectSecp256k1Wallet.fromKey(
       Buffer.from(destinationChain.cosmwasm.privateKey, "hex"),
@@ -62,6 +70,7 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
 
     // start monitoring events
     monitorOrigin.start();
+    monitorDestination.start();
 
     // message to send
     let msgString = "hello world";
@@ -108,7 +117,7 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
         _sourceXCallContract: originChain.jvm.xcallAddress,
         _destinationAddress: destinationDappNetworkAddress
       },
-      destinationChain.jvm.networkLabel,
+      destinationChain.cosmwasm.networkLabel,
       true,
       originChain.jvm.xcallAddress,
       JVM_SERVICE_ORIGIN,
@@ -122,7 +131,7 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
         ".\n" +
         chalk.dim(`   -- Error: ${JSON.stringify(request1.error)}\n`);
       monitorOrigin.close();
-      monitorDestination.close();
+      spinner.fail();
       return;
     }
 
@@ -152,14 +161,14 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
         chalk.dim(`   -- Tx Result: ${JSON.stringify(txResult1)}\n`);
       spinner2.fail();
       monitorOrigin.close();
-      monitorDestination.close();
       return;
     }
+    spinner2.succeed();
 
     // send a message to jvm dApp on destination chain
     // if msg is the string "executeRollback" a rollback
     // will be executed
-    const spinner5 = ora({
+    const spinner3 = ora({
       text: `> Test: invoking 'sendMessage' method on origin contract:`,
       suffixText: `${chalk.yellow("Pending")}\n`,
       spinner: process.argv[2]
@@ -168,26 +177,29 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
     const request3 = await invokeJvmDAppMethod(
       dappOriginContractAddress,
       "sendMessage",
-      paramsToDestination
+      paramsToDestination,
+      true,
+      destinationChain.cosmwasm.networkLabel
     );
 
     if (request3.txHash == null) {
-      spinner5.suffixText =
+      spinner3.suffixText =
         chalk.red("FAILURE") +
         ".\n" +
         chalk.dim(`   -- Error: ${JSON.stringify(request3.error)}\n`);
       monitorOrigin.close();
+      spinner3.fail();
       return;
     }
 
-    spinner5.suffixText =
+    spinner3.suffixText =
       chalk.green("SUCCESS") +
       ".\n" +
       chalk.dim(`   -- Tx data: ${JSON.stringify(request3.txObj)}\n`);
-    spinner5.succeed();
+    spinner3.succeed();
 
     // fetch transaction result
-    const spinner6 = ora({
+    const spinner4 = ora({
       text: `> Test: validate tx for invoking 'sendMessage' method on origin contract (hash ${request3.txHash}): `,
       suffixText: `${chalk.yellow("Pending")}\n`,
       spinner: process.argv[2]
@@ -196,27 +208,27 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
     const txResult3 = await getTxResult(
       request3.txHash,
       JVM_SERVICE_ORIGIN,
-      spinner6
+      spinner4
     );
 
     if (txResult3 == null || txResult3.status == 0) {
-      spinner6.suffixText =
+      spinner4.suffixText =
         chalk.red("FAILURE") +
         ".\n" +
         chalk.dim(`   -- Tx Result: ${JSON.stringify(txResult3)}\n`);
-      spinner6.fail();
+      spinner4.fail();
       monitorOrigin.close();
       return;
     }
 
-    spinner6.suffixText =
+    spinner4.suffixText =
       chalk.green("SUCCESS") +
       ".\n" +
       chalk.dim(`   -- Tx Result: ${JSON.stringify(txResult3)}\n`);
-    spinner6.succeed();
+    spinner4.succeed();
 
     // catch CallMessageSent event from JVM contract
-    const spinner7 = ora({
+    const spinner5 = ora({
       text: `> Test: catch CallMessageSent event from contract on origin chain:`,
       suffixText: `${chalk.yellow("Pending")}\n`,
       spinner: process.argv[2]
@@ -224,75 +236,86 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
 
     const eventlog1 = filterCallMessageSentEventJvm(txResult3.eventLogs);
     if (eventlog1.length == 0) {
-      spinner7.suffixText =
+      spinner5.suffixText =
         chalk.red("FAILURE") +
         ".\n" +
         chalk.dim(`   -- Error: event not found\n`);
-      spinner7.fail();
+      spinner5.fail();
       monitorOrigin.close();
       return;
     }
 
-    spinner7.suffixText =
+    spinner5.suffixText =
       chalk.green("SUCCESS") +
       ".\n" +
       chalk.dim(`   -- Event data: ${JSON.stringify(eventlog1)}\n`);
-    spinner7.succeed();
+    spinner5.succeed();
 
     // catch CallMessage event on destination chain
     const parsedEventlog1 = parseCallMessageSentEventJvm(eventlog1);
     const snFromSource = parsedEventlog1._sn;
     console.log(`> Message sn: ${snFromSource}`);
-    const spinner8 = ora({
+
+    const spinner6 = ora({
       text: `> Test: catch CallMessage event from contract on destination chain:`,
       suffixText: `${chalk.yellow("Pending")}\n`,
       spinner: process.argv[2]
     }).start();
 
-    spinner8.suffixText = `${chalk.yellow("Pending")}. sn: ${snFromSource}\n`;
+    spinner6.suffixText = `${chalk.yellow("Pending")}. sn: ${snFromSource}\n`;
 
     // wait for monitor to fetch event
-    // await monitorDestination.waitForEvents(
-    //   "CallMessage",
-    //   snFromSource,
-    //   spinner8
-    // );
+    await monitorDestination.waitForEvents(
+      "CallMessage",
+      snFromSource,
+      spinner6
+    );
 
-    // const callMessageEvents = monitorDestination.events.CallMessage.filter(
-    //   event => event.indexed[3] === snFromSource
-    // );
+    const callMessageEvents = monitorDestination.events.CallMessage.filter(
+      event => {
+        // event => event.indexed[3] === snFromSource
+        for (const attrib of event.attributes) {
+          if (attrib.key === "sn") {
+            return parseInt(attrib.value) === parseInt(snFromSource, 16);
+          }
+        }
+      }
+    );
 
-    // if (callMessageEvents.length == 0) {
-    //   spinner8.suffixText =
-    //     chalk.red("FAILURE") +
-    //     ".\n" +
-    //     chalk.dim(`   -- Error: event not found\n`);
-    //   spinner8.fail();
-    //   monitorOrigin.close();
-    //   monitorDestination.close();
-    //   return;
-    // }
+    if (callMessageEvents.length == 0) {
+      spinner6.suffixText =
+        chalk.red("FAILURE") +
+        ".\n" +
+        chalk.dim(`   -- Error: event not found\n`);
+      spinner6.fail();
+      monitorOrigin.close();
+      monitorDestination.close();
+      return;
+    }
 
-    // spinner8.suffixText =
-    //   chalk.green("SUCCESS") +
-    //   ".\n" +
-    //   chalk.dim(`   -- Event data: ${JSON.stringify(callMessageEvents)}\n`);
-    // spinner8.succeed();
+    spinner6.suffixText =
+      chalk.green("SUCCESS") +
+      ".\n" +
+      chalk.dim(`   -- Event data: ${JSON.stringify(callMessageEvents)}\n`);
+    spinner6.succeed();
 
-    // // parse CallMessage event
-    // const spinner9 = ora({
-    //   text: `> Test: parse CallMessage event from contract on destination chain:`,
-    //   suffixText: `${chalk.yellow("Pending")}\n`,
-    //   spinner: process.argv[2]
-    // }).start();
+    // parse CallMessage event
+    const spinner7 = ora({
+      text: `> Test: parse CallMessage event from contract on destination chain:`,
+      suffixText: `${chalk.yellow("Pending")}\n`,
+      spinner: process.argv[2]
+    }).start();
 
-    // const parsedEventlog2 = parseCallMessageEventJvm(callMessageEvents);
+    const parsedEventlog2 = parseCallMessageEventCosmWasm(callMessageEvents);
 
-    // spinner9.suffixText =
-    //   chalk.green("SUCCESS") +
-    //   ".\n" +
-    //   chalk.dim(`   -- Event data: ${JSON.stringify(parsedEventlog2)}\n`);
-    // spinner9.succeed();
+    spinner7.suffixText =
+      chalk.green("SUCCESS") +
+      ".\n" +
+      chalk.dim(`   -- Event data: ${JSON.stringify(parsedEventlog2)}\n`);
+    spinner7.succeed();
+    monitorOrigin.close();
+    monitorDestination.close();
+    throw new Error("test");
 
     // // invoke executeCall on destination chain
     // const spinner10 = ora({

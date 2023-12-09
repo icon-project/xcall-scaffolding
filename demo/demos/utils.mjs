@@ -667,6 +667,19 @@ function parseCallMessageEventJvm(event) {
   return result;
 }
 
+function parseCallMessageEventCosmWasm(event) {
+  return {
+    _from: event[0].attributes.filter(attr => attr.key === "from")[0].value,
+    _to: event[0].attributes.filter(attr => attr.key === "to")[0].value,
+    _sn: event[0].attributes.filter(attr => attr.key === "sn")[0].value,
+    _reqId: event[0].attributes.filter(attr => attr.key === "reqId")[0].value,
+    _data: Buffer.from(
+      event[0].attributes.filter(attr => attr.key === "data")[0].value,
+      "base64"
+    ).toString("hex")
+  };
+}
+
 export default {
   decodeMessage,
   encodeMessage,
@@ -683,6 +696,7 @@ export default {
   invokeJvmContractMethod,
   invokeJvmDAppMethod,
   isValidHexAddress,
+  parseCallMessageEventCosmWasm,
   parseCallMessageEventJvm,
   parseCallMessageSentEventJvm,
   parseEvmEventsFromBlock,
