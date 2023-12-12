@@ -37,7 +37,7 @@ async function main() {
     console.log("\n>>>>>> Running xCall demos");
     switch (singleTest) {
       case "helloWorldDemo":
-        console.log("\n>>>> Running JVM-EVM helloWorldDemo");
+        console.log("\n>>>> Running helloWorldDemo");
         await helloWorldDemo(deployments);
         break;
       case "votingDappDemo":
@@ -46,7 +46,7 @@ async function main() {
         //   await votingDappDemo(deployments);
         break;
       default:
-        console.log("\n>>>> Running JVM-EVM helloWorldDemo");
+        console.log("\n>>>> Running helloWorldDemo");
         await helloWorldDemo(deployments);
         console.log("\n>>>> Running votingDappDemo");
         console.log("! Not implemented yet");

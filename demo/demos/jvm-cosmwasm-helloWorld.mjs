@@ -24,7 +24,10 @@ const {
   invokeJvmDAppMethod,
   parseCallMessageEventJvm,
   parseCallMessageSentEventJvm,
-  parseCallMessageEventCosmWasm
+  parseCallMessageEventCosmWasm,
+  invokeCosmWasmContractMethod,
+  filterCallExecutedEventCosmWasm,
+  parseCallExecutedEventCosmWasm
 } = miscUtils;
 const { originChain, destinationChain } = config;
 const { getTxResult } = utils;
@@ -313,105 +316,79 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
       ".\n" +
       chalk.dim(`   -- Event data: ${JSON.stringify(parsedEventlog2)}\n`);
     spinner7.succeed();
-    monitorOrigin.close();
-    monitorDestination.close();
-    throw new Error("test");
 
-    // // invoke executeCall on destination chain
-    // const spinner10 = ora({
-    //   text: `> Test: invoking 'executeCall' method on destination contract:`,
-    //   suffixText: `${chalk.yellow("Pending")}\n`,
-    //   spinner: process.argv[2]
-    // }).start();
+    // invoke executeCall on destination chain
+    const spinner8 = ora({
+      text: `> Test: invoking 'executeCall' method on destination contract:`,
+      suffixText: `${chalk.yellow("Pending")}\n`,
+      spinner: process.argv[2]
+    }).start();
 
-    // const request4 = await invokeJvmContractMethod(
-    //   "executeCall",
-    //   destinationChain.jvm.xcallAddress,
-    //   JVM_WALLET_DESTINATION,
-    //   destinationChain.jvm.nid,
-    //   JVM_SERVICE_DESTINATION,
-    //   {
-    //     _reqId: parsedEventlog2._nsn,
-    //     _data: parsedEventlog2._data
-    //   },
-    //   false
-    // );
+    const request4 = await invokeCosmWasmContractMethod(
+      COSMWASM_SERVICE,
+      COSMWASM_WALLET_DESTINATION.address,
+      destinationChain.cosmwasm.xcallAddress,
+      {
+        execute_call: {
+          request_id: parsedEventlog2._reqId,
+          data: JSON.parse(parsedEventlog2._data)
+        }
+      }
+    );
 
-    // if (request4.txHash == null) {
-    //   spinner10.suffixText =
-    //     chalk.red("FAILURE") +
-    //     ".\n" +
-    //     chalk.dim(`   -- Error: ${JSON.stringify(request4.error)}\n`);
-    //   monitorOrigin.close();
-    //   monitorDestination.close();
-    //   return;
-    // }
+    if (request4.error != null) {
+      spinner8.suffixText =
+        chalk.red("FAILURE") +
+        ".\n" +
+        chalk.dim(`   -- Error: ${JSON.stringify(request4.error)}\n`);
+      spinner8.fail();
+      monitorOrigin.close();
+      monitorDestination.close();
+      return;
+    }
 
-    // spinner10.suffixText =
-    //   chalk.green("SUCCESS") +
-    //   ".\n" +
-    //   chalk.dim(`   -- Tx data: ${JSON.stringify(request4.txObj)}\n`);
-    // spinner10.succeed();
+    spinner8.suffixText =
+      chalk.green("SUCCESS") +
+      ".\n" +
+      chalk.dim(`   -- Tx Hash: ${JSON.stringify(request4)}\n`);
+    spinner8.succeed();
 
-    // // validate transaction for executeCall
-    // const spinner11 = ora({
-    //   text: `> Test: validate tx for invoking 'executeCall' method on destination contract (hash ${request4.txHash}): `,
-    //   suffixText: `${chalk.yellow("Pending")}\n`,
-    //   spinner: process.argv[2]
-    // }).start();
+    const spinner9 = ora({
+      text: `> Test: catch CallExecuted event from contract on destination chain:`,
+      suffixText: `${chalk.yellow("Pending")}\n`,
+      spinner: process.argv[2]
+    }).start();
 
-    // const txResult4 = await getTxResult(
-    //   request4.txHash,
-    //   JVM_SERVICE_DESTINATION,
-    //   spinner11
-    // );
+    spinner9.suffixText = `${chalk.yellow("Pending")}. sn: ${snFromSource}\n`;
 
-    // if (txResult4 == null || txResult4.status == 0) {
-    //   spinner11.suffixText =
-    //     chalk.red("FAILURE") +
-    //     ".\n" +
-    //     chalk.dim(`   -- Tx Result: ${JSON.stringify(txResult4)}\n`);
-    //   spinner11.fail();
-    //   monitorOrigin.close();
-    //   monitorDestination.close();
-    //   return;
-    // }
+    const filteredCallExecutedEvent = filterCallExecutedEventCosmWasm(
+      request4.txObj.events
+    );
+    const parsedCallExecutedEvent = parseCallExecutedEventCosmWasm(
+      filteredCallExecutedEvent[0]
+    );
 
-    // spinner11.suffixText =
-    //   chalk.green("SUCCESS") +
-    //   ".\n" +
-    //   chalk.dim(`   -- Tx Result: ${JSON.stringify(txResult4)}\n`);
-    // spinner11.succeed();
+    if (parsedCallExecutedEvent == null) {
+      spinner9.suffixText =
+        chalk.red("FAILURE") +
+        ".\n" +
+        chalk.dim(`   -- Error: event not found\n`);
+      spinner9.fail();
+      monitorOrigin.close();
+      monitorDestination.close();
+      return;
+    }
 
-    // // catch CallExecuted event from destination chain
-    // const spinner12 = ora({
-    //   text: `> Test: catch CallExecuted event from contract on destination chain:`,
-    //   suffixText: `${chalk.yellow("Pending")}\n`,
-    //   spinner: process.argv[2]
-    // }).start();
+    spinner9.suffixText =
+      chalk.green("SUCCESS") +
+      ".\n" +
+      chalk.dim(
+        `   -- Event data: ${JSON.stringify(parsedCallExecutedEvent)}\n`
+      );
+    spinner9.succeed();
 
-    // const eventlog2 = filterCallExecutedEventJvm(
-    //   txResult4.eventLogs,
-    //   destinationChain.jvm.xcallAddress
-    // );
-
-    // if (eventlog2.length == 0) {
-    //   spinner12.suffixText =
-    //     chalk.red("FAILURE") +
-    //     ".\n" +
-    //     chalk.dim(`   -- Error: event not found\n`);
-    //   spinner12.fail();
-    //   monitorOrigin.close();
-    //   monitorDestination.close();
-    //   return;
-    // }
-
-    // spinner12.suffixText =
-    //   chalk.green("SUCCESS") +
-    //   ".\n" +
-    //   chalk.dim(`   -- Event data: ${JSON.stringify(eventlog2)}\n`);
-    // spinner12.succeed();
-
+    //TODO: continue implementation
+    throw new Error("stop");
     // // if rollback is true, invoke rollback on source chain
     // // const msg = encodeMessage(msgString);
     // // const rollback = encodeMessage(rollbackString);

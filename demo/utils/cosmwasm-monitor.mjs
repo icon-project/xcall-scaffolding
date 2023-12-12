@@ -14,7 +14,8 @@ class CosmWasmMonitor {
     cosmwasmRpc,
     xcallAddress,
     initBlockHeight = null,
-    startSpinner = false
+    startSpinner = false,
+    debug = false
   ) {
     if (cosmwasmRpc == null || xcallAddress == null) {
       throw new Error("Invalid arguments");
@@ -25,9 +26,11 @@ class CosmWasmMonitor {
     this.client = null;
     this.running = false;
     this.timer = null;
+    this.debug = debug;
     this.currentBlockHeight = null;
     this.events = {
-      CallMessage: []
+      CallMessage: [],
+      CallExecuted: []
     };
     this.loopSpinner = ora({
       text: `> Waiting for events..`,
@@ -35,6 +38,7 @@ class CosmWasmMonitor {
     });
     this.startSpinner = startSpinner;
     this.filterCallMessageEvent = this.filterCallMessageEvent.bind(this);
+    this.filterCallExecutedEvent = this.filterCallExecutedEvent.bind(this);
     this.spinnerStart = this.spinnerStart.bind(this);
   }
 
@@ -57,6 +61,9 @@ class CosmWasmMonitor {
           //   this.spinnerSuccess();
           //   return true;
           // }
+          break;
+        case "CallExecuted":
+          return true;
           break;
         default:
           break;
@@ -168,10 +175,12 @@ class CosmWasmMonitor {
     // console.log(tx);
     if (tx.events.length > 0) {
       for (const event of tx.events) {
-        if (event.type === signature) {
-          // console.log("event");
+        if (this.debug) {
+          console.log(`event type :${event.type}`);
           // console.log(event);
           // console.log(JSON.stringify(event.attributes));
+        }
+        if (event.type === signature) {
           return event;
         }
       }
@@ -186,7 +195,7 @@ class CosmWasmMonitor {
   }
 
   async filterCallExecutedEvent(rawTx) {
-    const eventFilterd = await this.filterEvent(rawTx, "wasm-CallExecuted");
+    const eventFiltered = await this.filterEvent(rawTx, "wasm-CallExecuted");
     if (eventFiltered != null) {
       this.events.CallMessage.push(eventFiltered);
     }
@@ -225,6 +234,7 @@ class CosmWasmMonitor {
               if (block.txs.length > 0) {
                 for (const rawTx of block.txs) {
                   this.filterCallMessageEvent(rawTx);
+                  this.filterCallExecutedEvent(rawTx);
                 }
               }
             } else {
@@ -243,6 +253,7 @@ class CosmWasmMonitor {
                   if (block.txs.length > 0) {
                     for (const rawTx of block.txs) {
                       this.filterCallMessageEvent(rawTx);
+                      this.filterCallExecutedEvent(rawTx);
                     }
                   }
                 } else {
