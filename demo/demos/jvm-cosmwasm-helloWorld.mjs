@@ -79,12 +79,13 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
     let msgString = "hello world";
     const rollbackString = "use Rollback";
     const triggerErrorForRollback = true;
+    const stringToTriggerRollback = "ExecuteRollback";
 
     // to trigger a rollback, the message must be "ExecuteRollback"
     // and in that case the `MessageReceived` event
     // will not be emmitted
     if (triggerErrorForRollback) {
-      msgString = "ExecuteRollback";
+      msgString = stringToTriggerRollback;
     }
 
     // encode message
@@ -387,198 +388,194 @@ async function helloWorldDemoJVMCOSMWASM(deployments) {
       );
     spinner9.succeed();
 
-    //TODO: continue implementation
-    throw new Error("stop");
-    // // if rollback is true, invoke rollback on source chain
-    // // const msg = encodeMessage(msgString);
-    // // const rollback = encodeMessage(rollbackString);
-    // if (rollback != null) {
-    //   // if message sent is string literal "ExecuteRollback" then
-    //   // RollbackMessage will be raised along with ResponseMessage event
+    // if rollback is true, invoke rollback on source chain
+    if (rollback != null) {
+      // if message sent is string literal "ExecuteRollback" then
+      // RollbackMessage will be raised along with ResponseMessage event
 
-    //   const initBlock = monitorOrigin.currentBlockHeight;
-    //   const maxBlock = initBlock + 700;
-    //   console.log(
-    //     `> sn (id that identifies the event we are waiting for): ${snFromSource}`
-    //   );
-    //   console.log(
-    //     "> maxBlock (after reaching this block height the loop will be stopped and the event fetch will fail):",
-    //     maxBlock
-    //   );
+      const initBlock = monitorOrigin.currentBlockHeight;
+      const maxBlock = initBlock + 700;
+      console.log(
+        `> sn (id that identifies the event we are waiting for): ${snFromSource}`
+      );
+      console.log(
+        "> maxBlock (after reaching this block height the loop will be stopped and the event fetch will fail):",
+        maxBlock
+      );
 
-    //   const spinner13 = ora({
-    //     text: `> Test: catch ResponseMessage event from contract on source chain:`,
-    //     suffixText: `${chalk.yellow("Pending")}\n`,
-    //     spinner: process.argv[2]
-    //   }).start();
+      const spinner10 = ora({
+        text: `> Test: catch ResponseMessage event from contract on source chain:`,
+        suffixText: `${chalk.yellow("Pending")}\n`,
+        spinner: process.argv[2]
+      }).start();
 
-    //   await monitorOrigin.waitForEvents(
-    //     "ResponseMessage",
-    //     snFromSource,
-    //     spinner13,
-    //     maxBlock
-    //   );
+      await monitorOrigin.waitForEvents(
+        "ResponseMessage",
+        snFromSource,
+        spinner10,
+        maxBlock
+      );
 
-    //   const responseMsgEvents = monitorOrigin.events.ResponseMessage.filter(
-    //     event => event.indexed[1] == snFromSource
-    //   );
+      const responseMsgEvents = monitorOrigin.events.ResponseMessage.filter(
+        event => event.indexed[1] == snFromSource
+      );
 
-    //   if (responseMsgEvents.length == 0) {
-    //     spinner13.suffixText =
-    //       chalk.red("FAILURE") +
-    //       ".\n" +
-    //       chalk.dim(`   -- Error: event not found\n`);
-    //     spinner13.fail();
-    //     monitorOrigin.close();
-    //     monitorDestination.close();
-    //     return;
-    //   }
+      if (responseMsgEvents.length == 0) {
+        spinner10.suffixText =
+          chalk.red("FAILURE") +
+          ".\n" +
+          chalk.dim(`   -- Error: event not found\n`);
+        spinner10.fail();
+        monitorOrigin.close();
+        monitorDestination.close();
+        return;
+      }
 
-    //   spinner13.suffixText =
-    //     chalk.green("SUCCESS") +
-    //     ".\n" +
-    //     chalk.dim(`   -- Event data: ${JSON.stringify(responseMsgEvents)}\n`);
-    //   spinner13.succeed();
+      spinner10.suffixText =
+        chalk.green("SUCCESS") +
+        ".\n" +
+        chalk.dim(`   -- Event data: ${JSON.stringify(responseMsgEvents)}\n`);
+      spinner10.succeed();
 
-    //   // wait for RollbackMessage event
-    //   const spinner14 = ora({
-    //     text: `> Test: catch RollbackMessage event from contract on source chain:`,
-    //     suffixText: `${chalk.yellow("Pending")}\n`,
-    //     spinner: process.argv[2]
-    //   }).start();
+      // wait for RollbackMessage event
+      const spinner11 = ora({
+        text: `> Test: catch RollbackMessage event from contract on source chain:`,
+        suffixText: `${chalk.yellow("Pending")}\n`,
+        spinner: process.argv[2]
+      }).start();
 
-    //   if (msg !== encodeMessage("executeRollback")) {
-    //     spinner14.suffixText =
-    //       chalk.red("FAILURE") +
-    //       ".\n" +
-    //       chalk.dim(`   -- Rollback will not be raised\n`);
-    //     spinner14.fail();
-    //     monitorOrigin.close();
-    //     monitorDestination.close();
-    //     return;
-    //   } else {
-    //     await monitorOrigin.waitForEvents(
-    //       "RollbackMessage",
-    //       snFromSource,
-    //       spinner14,
-    //       maxBlock
-    //     );
+      if (msg !== encodeMessage(stringToTriggerRollback)) {
+        spinner11.suffixText =
+          chalk.red("FAILURE") +
+          ".\n" +
+          chalk.dim(`   -- Rollback will not be raised\n`);
+        spinner11.fail();
+        monitorOrigin.close();
+        monitorDestination.close();
+        return;
+      } else {
+        await monitorOrigin.waitForEvents(
+          "RollbackMessage",
+          snFromSource,
+          spinner11,
+          maxBlock
+        );
 
-    //     const rollbackMsgEvents = monitorOrigin.events.RollbackMessage.filter(
-    //       event => event.indexed[1] == snFromSource
-    //     );
+        const rollbackMsgEvents = monitorOrigin.events.RollbackMessage.filter(
+          event => event.indexed[1] == snFromSource
+        );
 
-    //     if (rollbackMsgEvents.length == 0) {
-    //       spinner14.suffixText =
-    //         chalk.red("FAILURE") +
-    //         ".\n" +
-    //         chalk.dim(`   -- Error: event not found\n`);
-    //       spinner14.fail();
-    //       monitorOrigin.close();
-    //       monitorDestination.close();
-    //       return;
-    //     }
+        if (rollbackMsgEvents.length == 0) {
+          spinner11.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: event not found\n`);
+          spinner11.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
 
-    //     spinner14.suffixText =
-    //       chalk.green("SUCCESS") +
-    //       ".\n" +
-    //       chalk.dim(`   -- Event data: ${JSON.stringify(rollbackMsgEvents)}\n`);
-    //     spinner14.succeed();
+        spinner11.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- Event data: ${JSON.stringify(rollbackMsgEvents)}\n`);
+        spinner11.succeed();
 
-    //     // execute rollback
-    //     const spinner15 = ora({
-    //       text: `> Test: execute rollback on source chain:`,
-    //       suffixText: `${chalk.yellow("Pending")}\n`,
-    //       spinner: process.argv[2]
-    //     }).start();
+        // execute rollback
+        const spinner12 = ora({
+          text: `> Test: execute rollback on source chain:`,
+          suffixText: `${chalk.yellow("Pending")}\n`,
+          spinner: process.argv[2]
+        }).start();
 
-    //     const request5 = await invokeJvmContractMethod(
-    //       "executeRollback",
-    //       originChain.jvm.xcallAddress,
-    //       JVM_WALLET_ORIGIN,
-    //       originChain.jvm.nid,
-    //       JVM_SERVICE_ORIGIN,
-    //       {
-    //         _sn: snFromSource
-    //       }
-    //     );
+        const request5 = await invokeJvmContractMethod(
+          "executeRollback",
+          originChain.jvm.xcallAddress,
+          JVM_WALLET_ORIGIN,
+          originChain.jvm.nid,
+          JVM_SERVICE_ORIGIN,
+          {
+            _sn: snFromSource
+          }
+        );
 
-    //     if (request5.txHash == null) {
-    //       spinner15.suffixText =
-    //         chalk.red("FAILURE") +
-    //         ".\n" +
-    //         chalk.dim(`   -- Error: ${JSON.stringify(request5.error)}\n`);
-    //       spinner15.fail();
-    //       monitorOrigin.close();
-    //       monitorDestination.close();
-    //       return;
-    //     }
+        if (request5.txHash == null) {
+          spinner12.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: ${JSON.stringify(request5.error)}\n`);
+          spinner12.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
 
-    //     spinner15.suffixText =
-    //       chalk.green("SUCCESS") +
-    //       ".\n" +
-    //       chalk.dim(`   -- TxHash: ${request5.txHash}\n`);
-    //     spinner15.succeed();
+        spinner12.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- TxHash: ${request5.txHash}\n`);
+        spinner12.succeed();
 
-    //     // verify transaction
-    //     const spinner16 = ora({
-    //       text: `> Test: verify transaction on source chain:`,
-    //       suffixText: `${chalk.yellow("Pending")}\n`,
-    //       spinner: process.argv[2]
-    //     }).start();
+        // verify transaction
+        const spinner13 = ora({
+          text: `> Test: verify transaction on source chain:`,
+          suffixText: `${chalk.yellow("Pending")}\n`,
+          spinner: process.argv[2]
+        }).start();
 
-    //     const txResult5 = await getTxResult(
-    //       request5.txHash,
-    //       JVM_SERVICE_ORIGIN,
-    //       spinner16
-    //     );
+        const txResult5 = await getTxResult(
+          request5.txHash,
+          JVM_SERVICE_ORIGIN,
+          spinner13
+        );
 
-    //     if (txResult5 == null || txResult5.status == 0) {
-    //       spinner16.suffixText =
-    //         chalk.red("FAILURE") +
-    //         ".\n" +
-    //         chalk.dim(`   -- Error: ${JSON.stringify(txResult5)}\n`);
-    //       spinner16.fail();
-    //       monitorOrigin.close();
-    //       monitorDestination.close();
-    //       return;
-    //     }
+        if (txResult5 == null || txResult5.status == 0) {
+          spinner13.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: ${JSON.stringify(txResult5)}\n`);
+          spinner13.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
 
-    //     spinner16.suffixText =
-    //       chalk.green("SUCCESS") +
-    //       ".\n" +
-    //       chalk.dim(`   -- TxResult: ${JSON.stringify(txResult5)}\n`);
-    //     spinner16.succeed();
+        spinner13.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- TxResult: ${JSON.stringify(txResult5)}\n`);
+        spinner13.succeed();
 
-    //     // catch RollbackExecuted event
-    //     const spinner17 = ora({
-    //       text: `> Test: catch RollbackExecuted event from contract on source chain:`,
-    //       suffixText: `${chalk.yellow("Pending")}\n`,
-    //       spinner: process.argv[2]
-    //     }).start();
+        // catch RollbackExecuted event
+        const spinner14 = ora({
+          text: `> Test: catch RollbackExecuted event from contract on source chain:`,
+          suffixText: `${chalk.yellow("Pending")}\n`,
+          spinner: process.argv[2]
+        }).start();
 
-    //     const eventlog5 = filterRollbackExecutedEventJvm(txResult5.eventLogs);
-    //     if (eventlog5.length == 0) {
-    //       spinner17.suffixText =
-    //         chalk.red("FAILURE") +
-    //         ".\n" +
-    //         chalk.dim(`   -- Error: event not found\n`);
-    //       spinner17.fail();
-    //       monitorOrigin.close();
-    //       monitorDestination.close();
-    //       return;
-    //     }
+        const eventlog5 = filterRollbackExecutedEventJvm(txResult5.eventLogs);
+        if (eventlog5.length == 0) {
+          spinner14.suffixText =
+            chalk.red("FAILURE") +
+            ".\n" +
+            chalk.dim(`   -- Error: event not found\n`);
+          spinner14.fail();
+          monitorOrigin.close();
+          monitorDestination.close();
+          return;
+        }
 
-    //     spinner17.suffixText =
-    //       chalk.green("SUCCESS") +
-    //       ".\n" +
-    //       chalk.dim(`   -- Event data: ${JSON.stringify(eventlog5)}\n`);
-    //     spinner17.succeed();
-    //   }
-    //   console.log("> stopping block monitors on both chains");
-    //   monitorOrigin.close();
-    //   monitorDestination.close();
-    // }
+        spinner14.suffixText =
+          chalk.green("SUCCESS") +
+          ".\n" +
+          chalk.dim(`   -- Event data: ${JSON.stringify(eventlog5)}\n`);
+        spinner14.succeed();
+      }
+      console.log("> stopping block monitors on both chains");
+      monitorOrigin.close();
+      monitorDestination.close();
+    }
   } catch (err) {
     console.log("Error in helloWorldDemoJVMCOSMWASM: ", err);
     monitorOrigin.close();
