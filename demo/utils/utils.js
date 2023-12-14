@@ -1,6 +1,9 @@
 const fs = require("fs");
 const IconService = require("icon-sdk-js");
 const { Web3 } = require("web3");
+const { DirectSecp256k1Wallet } = require("@cosmjs/proto-signing");
+const { SigningCosmWasmClient } = require("@cosmjs/cosmwasm-stargate");
+const { calculateFee, GasPrice } = require("@cosmjs/stargate");
 const { destinationChain, originChain, config } = require("./config");
 const customRequest = require("./customRequest");
 
@@ -218,6 +221,45 @@ function getEvmContract(compiledContractPath) {
   }
 }
 
+async function deployCosmwasmContract(compiledContractPath) {
+  try {
+    if (compiledContractPath == null) {
+      console.log("> No contract path provided. Bypassing deployment");
+    } else {
+      const COSMWASM_WALLET = await DirectSecp256k1Wallet.fromKey(
+        Buffer.from(destinationChain.cosmwasm.privateKey, "hex"),
+        "archway"
+      );
+      const COSMWASM_SERVICE = await SigningCosmWasmClient.connectWithSigner(
+        destinationChain.cosmwasm.rpc,
+        COSMWASM_WALLET
+      );
+      const gasPrice = GasPrice.fromString("1000000000000aconst");
+      const uploadFee = calculateFee(1_500_000, gasPrice);
+      const contractByteCode = fs.readFileSync(compiledContractPath);
+      const uploadReceipt = await COSMWASM_SERVICE.upload(
+        COSMWASM_WALLET.address,
+        contractByteCode,
+        uploadFee
+      );
+      const instantiateFee = calculateFee(500_000, gasPrice);
+      const instantiateReceipt = await COSMWASM_SERVICE.instantiate(
+        COSMWASM_WALLET.address,
+        uploadReceipt.codeId,
+        {
+          xcall_address: destinationChain.cosmwasm.xcallAddress
+        },
+        "HelloWorld",
+        instantiateFee
+      );
+      return instantiateReceipt.contractAddress;
+    }
+  } catch (e) {
+    console.log(`Error deploying contract: ${compiledContractPath}`, e.message);
+    throw new Error("Error deploying contract on COSMWASM chain");
+  }
+}
+
 /*
  */
 function getDappsNames() {
@@ -237,9 +279,24 @@ function getContractPaths() {
     const folderNamesEvmAndJvm = getDappsNames();
 
     folderNamesEvmAndJvm.forEach(folder => {
+      let jvmPath = `${config.paths.jvm.build}${folder}/${config.paths.jvm.post}${folder}-optimized.jar`;
+      let evmPath = `${config.paths.evm.build}${config.paths.evm.post}${folder}.json`;
+      let cosmwasmPath = `${config.paths.cosmwasm.build}${config.paths.cosmwasm.post}${folder}.wasm`;
+
+      if (!fs.existsSync(jvmPath)) {
+        jvmPath = null;
+      }
+      if (!fs.existsSync(evmPath)) {
+        evmPath = null;
+      }
+      if (!fs.existsSync(cosmwasmPath)) {
+        cosmwasmPath = null;
+      }
+
       results[folder] = {
-        evm: `${config.paths.evm.build}${config.paths.evm.post}${folder}.json`,
-        jvm: `${config.paths.jvm.build}${folder}/${config.paths.jvm.post}${folder}-optimized.jar`
+        evm: evmPath,
+        jvm: jvmPath,
+        cosmwasm: cosmwasmPath
       };
     });
     return results;
@@ -274,8 +331,8 @@ function verifyContractsBuild() {
     }
     return true;
   } catch (e) {
-    console.log("Error verifying contract build.", e.message);
-    throw new Error("Error verifying contract build.");
+    console.log("> Error verifying contract build.", e.message);
+    // throw new Error("Error verifying contract build.");
   }
 }
 
@@ -499,35 +556,54 @@ function validateEvmConfig(config) {
 }
 
 function validateCosmwasmConfig(config) {
-  // todo
+  if (config.rpc == null || config.rpc == "") {
+    console.log("> COSMWASM_RPC not set");
+    return false;
+  }
+  if (config.privateKey == null || config.privateKey == "") {
+    console.log("> COSMWASM_WALLET_PK not set");
+    return false;
+  }
+  if (config.networkLabel == null || config.networkLabel == "") {
+    console.log("> COSMWASM_NETWORK_LABEL not set");
+    return false;
+  }
+  if (config.xcallAddress == null || config.xcallAddress == "") {
+    console.log("> COSMWASM_XCALL_ADDRESS not set");
+    return false;
+  }
+
+  return true;
 }
 
 module.exports = {
-  deployJvmContract,
-  deployEvmContract,
-  getContractPaths,
-  verifyContractsBuild,
-  getTxResult,
-  saveDeployments,
-  getDeployments,
-  getDappsNames,
-  isValidHexAddress,
-  sleep,
-  getEvmContract,
-  customRequest,
-  fetchEventsFromTracker,
-  contractEventMonitor,
-  getBlockJvm,
-  JVM_SERVICE,
-  JVM_WALLET,
   EVM_SERVICE_WEB3,
   EVM_WALLET_WEB3,
   IconBuilder,
   IconConverter,
+  JVM_SERVICE,
+  JVM_WALLET,
   SignedTransaction,
-  validateJvmConfig,
-  validateEvmConfig,
-  validateDeployments,
+  contractEventMonitor,
   customJvmService,
-  customJvmWallet
+  customJvmWallet,
+  customRequest,
+  deployEvmContract,
+  deployJvmContract,
+  fetchEventsFromTracker,
+  getBlockJvm,
+  getContractPaths,
+  getDappsNames,
+  getDeployments,
+  getEvmContract,
+  getTxResult,
+  isValidHexAddress,
+  saveDeployments,
+  sleep,
+  validateCosmwasmConfig,
+  validateDeployments,
+  validateEvmConfig,
+  validateJvmConfig,
+  verifyContractsBuild,
+  deployCosmwasmContract
 };

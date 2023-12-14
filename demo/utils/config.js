@@ -82,6 +82,11 @@ const config = {
         build: "../jvm/contracts/",
         post: "build/libs/"
       },
+      cosmwasm: {
+        root: "../cosmwasm/contracts/",
+        build: "../cosmwasm/artifacts/",
+        post: ""
+      },
       deployments: DEPLOYMENTS_PATH
     },
     tracker: {

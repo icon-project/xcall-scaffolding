@@ -1,5 +1,6 @@
 import { Web3 } from "web3";
 import { ethers } from "ethers";
+import { calculateFee, GasPrice } from "@cosmjs/stargate";
 import utilIndex from "../utils/index.mjs";
 const { config, utils } = utilIndex;
 const { destinationChain, originChain, xcallAbi } = config;
@@ -667,10 +668,72 @@ function parseCallMessageEventJvm(event) {
   return result;
 }
 
+function parseCallMessageEventCosmWasm(event) {
+  return {
+    _from: event[0].attributes.filter(attr => attr.key === "from")[0].value,
+    _to: event[0].attributes.filter(attr => attr.key === "to")[0].value,
+    _sn: event[0].attributes.filter(attr => attr.key === "sn")[0].value,
+    _reqId: event[0].attributes.filter(attr => attr.key === "reqId")[0].value,
+    _data: event[0].attributes.filter(attr => attr.key === "data")[0].value
+  };
+}
+
+function filterCallExecutedEventCosmWasm(events) {
+  // console.log("events");
+  // console.log(events);
+  return events.filter(event => event.type === "wasm-CallExecuted");
+}
+
+function parseCallExecutedEventCosmWasm(event) {
+  // console.log("events");
+  // console.log(event);
+  if (event == null) return null;
+  return {
+    contract: event.attributes.filter(
+      attr => attr.key === "_contract_address"
+    )[0].value,
+    reqId: event.attributes.filter(attr => attr.key === "reqId")[0].value,
+    code: event.attributes.filter(attr => attr.key === "code")[0].value,
+    msg: event.attributes.filter(attr => attr.key === "msg")[0].value
+  };
+}
+
+async function invokeCosmWasmContractMethod(
+  service,
+  signerAddress,
+  destinationContract,
+  contractMethodJson
+) {
+  //
+  try {
+    const gasPrice = GasPrice.fromString("1000000000000aconst");
+    const fee = calculateFee(1_000_000, gasPrice);
+    const request = await service.execute(
+      signerAddress,
+      destinationContract,
+      contractMethodJson,
+      fee
+    );
+
+    return {
+      txHash: request.transactionHash,
+      txObj: { height: request.height, events: request.events },
+      error: null
+    };
+  } catch (err) {
+    return {
+      txHash: null,
+      txObj: null,
+      error: err
+    };
+  }
+}
+
 export default {
   decodeMessage,
   encodeMessage,
   executeCallEvm,
+  filterCallExecutedEventCosmWasm,
   filterCallExecutedEventEvm,
   filterCallExecutedEventJvm,
   filterCallMessageEventEvm,
@@ -680,9 +743,12 @@ export default {
   getNetworkAddress,
   initializeEvmContract,
   initializeJvmContract,
+  invokeCosmWasmContractMethod,
   invokeJvmContractMethod,
   invokeJvmDAppMethod,
   isValidHexAddress,
+  parseCallExecutedEventCosmWasm,
+  parseCallMessageEventCosmWasm,
   parseCallMessageEventJvm,
   parseCallMessageSentEventJvm,
   parseEvmEventsFromBlock,
