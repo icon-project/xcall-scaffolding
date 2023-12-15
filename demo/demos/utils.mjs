@@ -78,6 +78,11 @@ function filterCallExecutedEventEvm(msgId) {
   return filterEventEvm(xCallContract, "CallExecuted", msgId);
 }
 
+function filterCallMessageSentEventEvm(sender, destination) {
+  const xCallContract = getXcallContractObject();
+  return filterEventEvm(xCallContract, "CallMessageSent", sender, destination);
+}
+
 async function waitCallMessageEventEvm(
   eventFilter,
   spinner,
@@ -248,6 +253,20 @@ async function initializeEvmContract(
       destinationBtpAddress
     );
   } catch (e) {
+    return {
+      txHash: null,
+      txObj: null,
+      error: e
+    };
+  }
+}
+async function sendMessageEvmContract(dappContract, abi, payload, rollback) {
+  try {
+    const contract = getDappContractObject(dappContract, abi);
+    return await sendSignedTxEvm(contract, "sendMessage", payload, rollback);
+  } catch (e) {
+    console.log("error");
+    console.log(e);
     return {
       txHash: null,
       txObj: null,
@@ -753,10 +772,12 @@ export default {
   parseCallMessageSentEventJvm,
   parseEvmEventsFromBlock,
   recursivelyParseJSON,
+  sendMessageEvmContract,
   waitCallExecutedEventEvm,
   waitCallMessageEventEvm,
   waitEventFromTrackerJvm,
   waitEventJvm,
   waitResponseMessageEventJvm,
-  waitRollbackExecutedEventJvm
+  waitRollbackExecutedEventJvm,
+  filterCallMessageSentEventEvm
 };

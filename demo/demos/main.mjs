@@ -31,7 +31,7 @@ async function main() {
         helloWorldDemo = helloWorldDemoJVMCOSMWASM;
         break;
       default:
-        helloWorldDemo = helloWorldDemoJVMEVM;
+        helloWorldDemo = helloWorldDemoJVMJVM;
     }
 
     console.log("\n>>>>>> Running xCall demos");

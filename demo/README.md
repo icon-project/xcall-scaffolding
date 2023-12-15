@@ -107,7 +107,17 @@ Once the `.env` file has been defined correctly you can run the following comman
 npm run deploy
 ```
 
-The following command will execute the demo:
+The following command will execute the jvm-jvm demo:
 ```bash
-npm run demo-testnet-helloWorld
+npm run demo-jvm-jvm
+```
+
+The following command will execute the jvm-evm demo:
+```bash
+npm run demo-jvm-evm
+```
+
+The following command will execute the jvm-cosmwasm demo:
+```bash
+npm run demo-jvm-cosmwasm
 ```
