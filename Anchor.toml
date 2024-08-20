@@ -1,0 +1,24 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.devnet]
+hello_world = "A3mNjdSgQWg9EauiMUktr7tg6hwZZ9QqAcY4b6PdWDmN"
+
+[programs."https://solana-rpc.venture23.xyz"]
+voting_dapp = "DyBuFmULF32if3fC3VQH382RifBDadWST38o8JP2BmQk"
+
+[programs."https://solana-rpc.venture23.xyz/"]
+voting_dapp = "DyBuFmULF32if3fC3VQH382RifBDadWST38o8JP2BmQk"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
