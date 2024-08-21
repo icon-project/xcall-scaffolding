@@ -1,15 +1,5 @@
-devent url - https://api.devnet.solana.com
+Solana xcall Scaffolding contract - Hello World
+A simple program to send message through xcall via centralized connection
 
-Deploying cluster: https://api.devnet.solana.com
-Upgrade authority: /home/imsoniprashant/my-wallet.json
-Deploying program "mock_dapp_multi"...
-Program path: /home/imsoniprashant/Desktop/ibriz/2081/solana/xcall-dapp-scaffold/contracts/solana/target/deploy/mock_dapp_multi.so...
-Program Id: 8o57BJP56nsdUpmiNWbXbBVB4HVUmo43axJehv885U4N
-
-Deploying program "centralized_connection"...
-Program path: /home/imsoniprashant/Desktop/ibriz/2081/solana/xcall-dapp-scaffold/contracts/solana/target/deploy/centralized_connection.so...
-Program Id: 7p6RLasFzC9oajBu82HbH5sXAp3ZomYm2vnZFsKS2C2F
-
-Deploying program "xcall"...
-Program path: /home/imsoniprashant/Desktop/ibriz/2081/solana/xcall-dapp-scaffold/contracts/solana/target/deploy/xcall.so...
-Program Id: E6tdWCyFtrsqxtj5JXXqZB4wWZUt9zYMw3YofgBB3r2N
+Xcall and Centralized Connection imported from xcall-multi repo. 
+Xcall and Centralized connection program ID needs to be updated.
