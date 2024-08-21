@@ -1,4 +1,3 @@
-
 Solana xcall Scaffolding contract - Hello World
 A simple program to send message through xcall via centralized connection
 
