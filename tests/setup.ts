@@ -1,15 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { PublicKey, Connection, Keypair } from "@solana/web3.js";
-
 import { HelloWorld } from "../target/types/hello_world";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 import { TxnHelpers } from "../tests/utils";
 
+const helloWorldProgram: anchor.Program<HelloWorld> =
+  anchor.workspace.hello_world;
 
-const helloWorldProgram: anchor.Program<HelloWorld> = anchor.workspace.hello_world;
-
-
-export class Context {
+export class HelloWorldContext {
   program: anchor.Program<HelloWorld>;
   signer: Keypair;
   admin: Keypair;
@@ -17,30 +15,35 @@ export class Context {
   networkId: string;
   txnHelpers: TxnHelpers;
   isInitialized: boolean;
-  xcall_program_id = new PublicKey("")
-  source: string
-  destination: string
+  xcall_program_id: PublicKey;
+  source: string;
+  destination: string;
 
   constructor(connection: Connection, txnHelpers: TxnHelpers, admin: Keypair) {
     let provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
 
-    this.program = anchor.workspace.DappMulti;
+    this.program = anchor.workspace.hello_world;
     this.signer = admin;
     this.admin = admin;
     this.connection = connection;
     this.txnHelpers = txnHelpers;
-    this.networkId = "icon";
+    this.networkId = "solana";
     this.isInitialized = false;
-    this.xcall_program_id = Keypair.generate().publicKey
-    this.source = "connection address"
-    this.destination = "connection address"
+    this.xcall_program_id = new PublicKey("GzoCoosp8fJg7Qci1HbywnSCVr3RVcngBtB5MTUD8vuf");
+    this.source = "A3mNjdSgQWg9EauiMUktr7tg6hwZZ9QqAcY4b6PdWDmN";
+    this.destination = "A3mNjdSgQWg9EauiMUktr7tg6hwZZ9QqAcY4b6PdWDmN";
   }
 
   async initialize() {
-
+    const networkAddress = { "0": "solana/abc" };
     await this.program.methods
-      .initialize(this.xcall_program_id , {0: this.networkId}, this.source , this.destination )
+      .initialize(
+        this.xcall_program_id,
+        networkAddress,
+        this.source,
+        this.destination
+      )
       .signers([this.signer])
       .accountsStrict({
         signer: this.signer.publicKey,
@@ -51,7 +54,6 @@ export class Context {
 
     this.isInitialized = true;
   }
-
 
   async getConfig() {
     return await this.program.account.config.fetch(
@@ -64,7 +66,7 @@ export class Context {
 export class HelloWorldPDA {
   constructor() {}
 
-  static config() {
+   static config() {
     let [pda, bump] = PublicKey.findProgramAddressSync(
       [Buffer.from("config")],
       helloWorldProgram.programId
@@ -73,3 +75,5 @@ export class HelloWorldPDA {
     return { bump, pda };
   }
 }
+
+

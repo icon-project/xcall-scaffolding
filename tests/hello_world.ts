@@ -1,66 +1,42 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import { XcallContext, XcallPDA } from "./utils/xcall_setup";
+import { ConnectionPDA } from "./utils/centralized_setup";
+import connection_idl from "./target/idl/centralized_connection.json";
+
+import { HelloWorldContext, HelloWorldPDA } from "../tests/setup";
+import { TxnHelpers } from "../tests/utils";
+import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 import { HelloWorld } from "../target/types/hello_world";
 
-describe("hello_world", () => {
-  // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env());
+const provider = anchor.AnchorProvider.env();
+anchor.setProvider(provider);
+const connectionProgram = new anchor.Program(
+  connection_idl as anchor.Idl,
+  provider
+);
 
-  const airdrop = async (publicKey: anchor.web3.PublicKey) => {
-    const airdropSignature = await provider.connection.requestAirdrop(
-      publicKey,
-      anchor.web3.LAMPORTS_PER_SOL // Adjust amount as necessary
-    );
-    await provider.connection.confirmTransaction(airdropSignature);
-  };
+const helloWorldProgram: anchor.Program<HelloWorld> =
+  anchor.workspace.HelloWorld;
 
-  const getTxnLogs = async (tx) => {
-    const confirmation = await provider.connection.confirmTransaction(
-      tx,
-      "confirmed"
-    );
-    console.log("Transaction confirmation status:", confirmation.value.err);
+describe("Hello World", () => {
+  const provider = anchor.AnchorProvider.env();
+  const connection = provider.connection;
+  const wallet = provider.wallet as anchor.Wallet;
 
-    let txDetails = await provider.connection.getTransaction(tx, {
-      commitment: "confirmed",
-    });
+  let txnHelpers = new TxnHelpers(connection, wallet.payer);
+  let ctx = new HelloWorldContext(connection, txnHelpers, wallet.payer);
 
-    if (txDetails?.meta?.logMessages) {
-      txDetails.meta.logMessages.forEach((log) => {
-        console.log("Log:", log);
-      });
-    }
-  };
-
-  const getBalance = async (acc: PublicKey) => {
-    let balance = await provider.connection.getBalance(acc);
-    console.log("Account Balance is: ", balance);
-  };
-
-  const program = anchor.workspace.HelloWorld as Program<HelloWorld>;
-
-  it("Is initialized!", async () => {
-    // Add your test here.
-    const tx = await program.methods.initialize().rpc();
-    console.log("Your transaction signature", tx);
+  it("Should initialize", async () => {
+    // await ctx.initialize();
+    const source = ctx.source;
+    const fetch_source = await ctx.getConfig();
+    console.log(source, fetch_source);
   });
 
   it("should send message", async () => {
-    let xcall_context = new XcallTestCtx(connection, txnHelpers, wallet.payer);
+    const xcall_program_id = ctx.xcall_program_id;
 
-     await xcall_context.setDefaultConnection(xcall_context.networkId , xcallProgram.programId);
-
-    let envelope = new Envelope(
-      MessageType.CallMessage,
-      new CallMessage(new Uint8Array([])).encode(),
-      [connectionProgram.programId.toString()],
-      [wallet.publicKey.toString()]
-    ).encode();
-
-    const to = { "0": "icon/abc" };
-    const msg_type = 0;
-    const rollback = Buffer.from("rollback");
-    const message = Buffer.from(envelope);
+    let xcall_context = new XcallContext(connection, txnHelpers);
 
     let remaining_accounts = [
       {
@@ -111,7 +87,7 @@ describe("hello_world", () => {
         isWritable: true,
       },
       {
-        pubkey: xcallProgram.programId,
+        pubkey: xcall_program_id,
         isSigner: false,
         isWritable: true,
       },
@@ -122,12 +98,11 @@ describe("hello_world", () => {
       },
     ];
 
-    let sendCallIx = await dappProgram.methods
-      .sendCallMessage( to, message, msg_type, rollback)
+    let sendCallIx = await helloWorldProgram.methods
+      .sendMessage("send this message cross chain")
       .accountsStrict({
-        config: DappPDA.config().pda,
+        config: HelloWorldPDA.config().pda,
         systemProgram: SYSTEM_PROGRAM_ID,
-        connectionsAccount: DappPDA.connections(ctx.networkId).pda,
         sender: wallet.payer.publicKey,
       })
       .remainingAccounts(remaining_accounts)
@@ -136,27 +111,5 @@ describe("hello_world", () => {
     let sendCallTx = await txnHelpers.buildV0Txn([sendCallIx], [wallet.payer]);
 
     let sendCallTxSignature = await connection.sendTransaction(sendCallTx);
-    // await txnHelpers.logParsedTx(sendCallTxSignature);
   });
 });
-
-
-
-import { assert, config, expect } from "chai";
-import { Keypair } from "@solana/web3.js";
-
-import { TestContext as DappTestCtx, DappPDA } from "./setup";
-import { TxnHelpers, sleep } from "../utils";
-import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-import { TestContext as XcallTestCtx, XcallPDA } from "../xcall/setup";
-
-import { PublicKey } from "@solana/web3.js";
-
-import { Xcall } from "../../target/types/xcall";
-import { Envelope, CallMessage, MessageType } from "../xcall/types";
-
-import { CentralizedConnection } from "../../target/types/centralized_connection";
-
-import { ConnectionPDA } from "../centralized-connection/setup";
-import { DappMulti } from "../../target/types/dapp_multi";
-
