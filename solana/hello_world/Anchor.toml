@@ -1,0 +1,19 @@
+[toolchain]
+
+[features]
+resolution = false
+skip-lint = false
+
+[programs.localnet]
+hello_world = "Hwi5JUPCFhgZ42rPmCKQ7FcqShr69Sapu5DRc3jc98kN"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+"hello_world"= "yarn ts-node ./scripts/hello_world.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

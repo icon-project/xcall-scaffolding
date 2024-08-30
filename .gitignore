@@ -53,6 +53,12 @@ scripts/venv
 .env.*
 !.env.example
 node_modules
+sbf-solana-solana/
+debug/
+deploy/
+release/
+test-ledger
+
 contract/scripts
 *.swp*
 *foo*
@@ -61,3 +67,4 @@ deployments.*
 *.bkp
 local
 *.old*
+.anchor
